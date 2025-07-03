@@ -35,6 +35,6 @@ qb = () => {
     let strengthVal = document.getElementById('strength').value;
     console.log(`Quantum Blur strength: ${strengthVal}`);
 
-    // Call the quantum blur function from quantumblur.js
-    QuantumBlur(userImage.files[0], strengthVal);
+    // Call the function from quantumblur.js or wherever
+    // QuantumBlur(userImage.files[0], strengthVal);
 }
