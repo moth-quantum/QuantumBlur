@@ -1,4 +1,6 @@
-document.getElementById('userImage').addEventListener('change', (e) =>{
+import { test } from './quantumblur.js';
+
+document.getElementById('userImage').addEventListener('change', (e) => {
     let files = e.target.files;
     let preview = document.getElementById('preview');
 
@@ -25,7 +27,7 @@ document.getElementById('userImage').addEventListener('change', (e) =>{
     }
 });
 
-qb = () => {
+document.getElementById('qbBtn').onclick = function() {
     let before = document.getElementById('userImage');
     if (before.files.length === 0) {
         alert('Upload an image first.');
@@ -35,6 +37,5 @@ qb = () => {
     let strengthVal = document.getElementById('strength').value;
     console.log(`Quantum Blur strength: ${strengthVal}`);
 
-    // Call the function from quantumblur.js or wherever
-    // QuantumBlur(userImage.files[0], strengthVal);
-}
+    test();
+};

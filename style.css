@@ -59,8 +59,8 @@ body {
 }
 
 label.button {
-    background: yellow;
-    color: black;
+    background: black;
+    color: white;
 
     line-height: 1.2;
 
@@ -81,6 +81,5 @@ label.button {
     padding: 0;
     margin: -1px;
     overflow: hidden;
-    clip: rect(0, 0, 0, 0);
     border: 0;
 }

@@ -20,5 +20,21 @@
 // that they have been altered from the originals.
 
 
-// Math.random() VS import math; import random
+// (Don't need to import anything in JS) Math.random() VS import math; import random
 
+import QuantumCircuit from './micromoth.js';
+import { simulate, superposition, rotate, phaseturn } from './micromoth.js';
+
+function innertest() {
+    let qc = new QuantumCircuit(2, 2);
+    qc.h(0);
+    qc.cx(0, 1);
+
+    console.log(qc.data);
+}
+
+export function test() {
+    console.log('foo');
+
+    innertest();
+}

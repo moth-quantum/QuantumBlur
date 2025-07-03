@@ -20,7 +20,7 @@
 
 const r2 = 0.70710678118;
 
-class QuantumCircuit {
+export default class QuantumCircuit {
     constructor(n, m) {
         this.num_qubits = n;
         this.num_clbits = m;
@@ -115,3 +115,17 @@ class QuantumCircuit {
 function simulate(qc, shots, get) {
 
 };
+
+function rotate(x, y, theta) {
+
+};
+
+function superposition(x, y) {
+
+};
+
+function phaseturn(x, y, tt) {
+
+};
+
+export { simulate, rotate, superposition, phaseturn };
