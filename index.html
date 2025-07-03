@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="style.css">
+
+    <title>Quantum Blur</title>
+</head>
+
+<body>
+    <h1>Quantum Blur</h1>
+    <p>This is a demo website for Quantum Blur, where you can upload the image and apply the Quantum Blur effect with customised 'strength'.</p>
+
+    <div class="container">
+        <div class="row">
+            <div class="column" id="before">
+                <h2>Before</h2>
+
+                <div class="canvas" id="preview">
+                </div>
+            </div>
+
+            <div class="column" id="after">
+                <h2>After</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="control">
+        <div class="center">
+            <input type="file" id="userImage" accept="image/*" style="opacity:0;">
+            <label for="userImage" class="button">Upload Image</label>
+        </div>
+
+        <button class="center" id="QuantumBlur" type="button" onclick="qb()">Apply Quantum Blur</button>
+
+        <div class="slider center">
+            <input type="range" min="1" max="10" value="6" id="strength">
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+    <script src="micromoth.js"></script>
+    <script src="quantumblur.js"></script>
+</body>
+
+</html>
