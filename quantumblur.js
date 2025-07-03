@@ -30,7 +30,7 @@ function innertest() {
     qc.h(0);
     qc.cx(0, 1);
 
-    console.log(qc.data);
+    console.log(qc.getData());
 }
 
 export function test() {

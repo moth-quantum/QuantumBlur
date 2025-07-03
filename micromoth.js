@@ -21,34 +21,41 @@
 const r2 = 0.70710678118;
 
 export default class QuantumCircuit {
+    #data;
+
     constructor(n, m) {
         this.num_qubits = n;
         this.num_clbits = m;
         this.name = '';
-        this.data = [];
+
+        this.#data = [];
     };
+
+    getData() {
+        return this.#data;
+    }
 
     // Pauli-X gate
     x(q) {
-        this.data.push(['x', q]);
+        this.#data.push(['x', q]);
         return this;
     };
 
     // Hadamard gate
     h(q) {
-        this.data.push(['h', q]);
+        this.#data.push(['h', q]);
         return this;
     };
 
     // CX gate (Control-X gate)
     cx(s, t) { // source, target
-        this.data.push(['cx', s, t]);
+        this.#data.push(['cx', s, t]);
         return this;
     };
 
     // Rotation-X gate
     rx(theta, q) {
-        this.data.push(['rx', theta, q]);
+        this.#data.push(['rx', theta, q]);
         return this;
     };
 
@@ -87,15 +94,15 @@ export default class QuantumCircuit {
     };
 
     crx(theta, s, t) {
-        this.data.push('crx', theta, s, t);
+        this.#data.push('crx', theta, s, t);
     };
 
     crz(theta, s, t) {
-        this.data.push('crz', theta, s, t);
+        this.#data.push('crz', theta, s, t);
     }; 
     
     swap(s, t) {
-        this.data.push('swap', s, t);
+        this.#data.push('swap', s, t);
     };
 
     measure(q, b) {
@@ -107,7 +114,7 @@ export default class QuantumCircuit {
             throw 'Select the right index of classical bits.';
         }
 
-        this.data.push(['m', q, b]);
+        this.#data.push(['m', q, b]);
         return this;
     };
 };
