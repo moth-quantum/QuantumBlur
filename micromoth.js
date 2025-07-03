@@ -117,22 +117,167 @@ export default class QuantumCircuit {
         this.#data.push(['m', q, b]);
         return this;
     };
+
+    measure_all() {
+        if (this.num_clbits === 0) this.num_clbits = this.num_qubits;
+        for (let q = 0; q < this.num_qubits; q++) this.measure(q, q);
+
+        return this;
+    }
 };
 
-function simulate(qc, shots, get) {
+function simulate(qc, shots = 1024, get = 'counts', noise_model = []) {
+    const nq = qc.num_qubits;
+    const nc = qc.num_clbits;
+    const d = qc.getData();
 
+    let state = Array(2 ** nq).fill([0, 0]);
+    state[0] = [1, 0]; // a |000...000> statevector
+
+    noise_model = Array(nq).fill(noise_model);
+
+    const outmap = {};
+
+    for (let gate of d) {
+        const [op, ...args] = gate;
+
+        if (op == 'm') {
+            outmap[args[1]] = args[0];
+        }
+        else if (['x', 'h', 'rx', 'rz'].includes(op)) {
+            const j = args[args.length - 1];
+
+            for (let i0 = 0; i0 < 2 ** j; i0++) {
+                for (let i1 = 0; i1 < 2 ** (nq - j - 1); i1++) {
+                    const b0 = i0 + 2 ** (j + 1) * i1;
+                    const b1 = b0 + 2 ** j;
+
+                    if (op == 'x') {
+                        [state[b0], state[b1]] = [state[b1], state[b0]];
+                    }
+                    else if (op == 'h') {
+                        [state[b0], state[b1]] = superposition(state[b0], state[b1]);
+                    }
+                    else if (op == 'rx') {
+                        [state[b0], state[b1]] = rotate(state[b0], state[b1], args[0]);
+                    }
+                    else if (op == 'rz') {
+                        [state[b0], state[b1]] = phaseturn(state[b0], state[b1], args[0]);
+                    }
+                }
+            }
+        }
+        else if (['cx', 'crx', 'swap'].includes(op)) {
+            const theta = (op == 'crx') ? args[0] : null;
+            const [s, t] = (op == 'crx') ? args.slice(1) : args;
+            const [l, h] = [Math.min(s, t), Math.max(s, t)];
+
+            for (let i0 = 0; i0 < 2 ** l; i0++) {
+                for (let i1 = 0; i1 < 2 ** (h - l - 1); i1++) {
+                    for (let i2 = 0; i2 < 2 ** (nq - h - 1); i2++) {
+                        const b00 = i0 + 2 ** (l + 1) * i1 + 2 ** (h + 1) * i2;
+                        const b01 = b00 + 2 ** t;
+                        const b10 = b00 + 2 ** s;
+                        const b11 = b10 + 2 ** t;
+
+                        if (op == 'cx') {
+                        [state[b10], state[b11]] = [state[b11], state[b10]];
+                        }
+                        else if (op == 'crx') {
+                        [state[b10], state[b11]] = rotate(state[b10], state[b11], theta);
+                        }
+                        else if (op == 'swap') {
+                            [state[b01], state[b10]] = [state[b10], state[b01]];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (get == 'statevector') return state;
+    // ====================================
+
+    let probs = state.map(([a, b]) => a * a + b * b);
+
+    if (noise_model.length > 0) {
+        for (let j = 0; j < nq; j++) {
+            const p = noise_model[j];
+            for (let i0 = 0; i0 < 2 ** j; i0++) {
+                for (let i1 = 0; i1 < 2 ** (nq - j - 1); i1++) {
+                    const b0 = i0 + 2 ** (j + 1) * i1;
+                    const b1 = b0 + 2 ** j;
+                    const p0 = probs[b0], p1 = probs[b1];
+                    probs[b0] = (1 - p) * p0 + p * p1;
+                    probs[b1] = (1 - p) * p1 + p * p0;
+                }
+            }
+         }
+    }
+
+    if (get == 'probability_dictionary') {
+        return Object.fromEntries(
+            probs.map((p, i) => [i.toString(2).padStart(nq, '0'), p])
+        );
+    }
+
+    let results = [];
+    for (let _ = 0; _ < shots; _++) {
+        let r = Math.random();
+        let cumu = 0;
+        let chosen = null;
+
+        for (let j = 0; j < probs.length; j++) {
+            cumu += probs[j];
+            if (r < cumu) {
+                chosen = j;
+                break;
+            }
+        }
+
+        const raw = chosen.toString(2).padStart(nq, '0');
+        const out_arr = Array(nc).fill('0');
+        for (let bit in outmap) {
+            out_arr[nc - 1 - parseInt(bit)] = raw[nq - 1 - outmap[bit]];
+        }
+        results.push(out_arr.join(''));
+
+        if (get == 'memory') return results; // accumulated step-by-step changes
+
+        const counts = {};
+        for (let res of results) {
+            counts[res] = (counts[res] || 0) + 1;
+        }
+
+        return counts;
+    }
 };
 
 function rotate(x, y, theta) {
+    const COS = Math.cos(theta / 2);
+    const SIN = Math.sin(theta / 2);
 
+    return [
+        [x[0] * COS + y[1] * SIN, x[1] * COS - y[0] * SIN],
+        [y[0] * COS + x[1] * SIN, y[1] * COS - x[0] * SIN]
+    ];
 };
 
 function superposition(x, y) {
-
+    return [
+        [r2 * (x[0] + y[0]), r2 * (x[1] + y[1])],
+        [r2 * (x[0] - y[0]), r2 * (x[1] - y[1])]
+    ]
 };
 
 function phaseturn(x, y, tt) {
+    const COS = Math.cos(tt / 2);
+    const SIN = Math.sin(tt / 2);
 
+    return [
+        [x[0] * COS + x[1] * SIN, x[1] * COS - x[0] * SIN],
+        [y[0] * COS - y[1] * SIN, y[1] * COS + y[0] * SIN]
+    ]
 };
 
 export { simulate, rotate, superposition, phaseturn };

@@ -26,11 +26,16 @@ import QuantumCircuit from './micromoth.js';
 import { simulate, superposition, rotate, phaseturn } from './micromoth.js';
 
 function innertest() {
-    let qc = new QuantumCircuit(2, 2);
+    let qc = new QuantumCircuit(3, 3);
+    // Bell state
     qc.h(0);
     qc.cx(0, 1);
 
-    console.log(qc.getData());
+    // GHZ state
+    qc.cx(1, 2);
+
+    let c = simulate(qc, 1024, 'statevector');
+    console.log(c);
 }
 
 export function test() {
