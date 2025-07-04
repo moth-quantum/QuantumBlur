@@ -35,6 +35,11 @@ export default class QuantumCircuit {
         return this.#data;
     }
 
+    initialize(state) {
+        this.#data.push({ gate: "init", state: state });
+        return this;
+    }
+
     // Pauli-X gate
     x(q) {
         this.#data.push(['x', q]);
@@ -143,6 +148,13 @@ function simulate(qc, shots = 1024, get = 'counts', noise_model = []) {
 
         if (op == 'm') {
             outmap[args[1]] = args[0];
+        }
+        else if (op == 'init') {
+            const s = args[0];
+
+            for (let i = 0; i < s.length && i < state.length; i++) {
+                state[i] = s[i];
+            }
         }
         else if (['x', 'h', 'rx', 'rz'].includes(op)) {
             const j = args[args.length - 1];
@@ -280,4 +292,24 @@ function phaseturn(x, y, tt) {
     ]
 };
 
-export { simulate, rotate, superposition, phaseturn };
+function kron(vec0, vec1) {
+    const newVec = []
+    for (const amp0 of vec0) {
+        for (const amp1 of vec1) {
+            newVec.push([amp0[0] * amp1[0] - amp0[1] * amp1[1], amp0[0] * amp1[1] + amp0[1] * amp1[0]]);    
+        }
+    }
+
+    return newVec;
+}
+
+// Normalise a statevector
+function norm(ket) {
+    let n = 0
+    for (const amp of ket) n += amp[0] * amp[0] + amp[1] * amp[1];
+    n = Math.sqrt(n);
+
+    return ket.map((amp) => [amp[0] / n, amp[1] / n]);
+}
+
+export { simulate, rotate, superposition, phaseturn, kron, norm };
