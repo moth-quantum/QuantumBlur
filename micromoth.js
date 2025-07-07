@@ -36,7 +36,10 @@ export default class QuantumCircuit {
     }
 
     initialize(state) {
-        this.#data.push({ gate: "init", state: state });
+        if (!Array.isArray(state) || !Array.isArray(state[0])) {
+            throw new Error("State must be an array of [real, imag] pairs.");
+        }
+        this.#data.push({ gate: "init", state });
         return this;
     }
 
@@ -99,15 +102,15 @@ export default class QuantumCircuit {
     };
 
     crx(theta, s, t) {
-        this.#data.push('crx', theta, s, t);
+        this.#data.push(['crx', theta, s, t]);
     };
 
     crz(theta, s, t) {
-        this.#data.push('crz', theta, s, t);
+        this.#data.push(['crz', theta, s, t]);
     }; 
     
     swap(s, t) {
-        this.#data.push('swap', s, t);
+        this.#data.push(['swap', s, t]);
     };
 
     measure(q, b) {
@@ -139,12 +142,25 @@ function simulate(qc, shots = 1024, get = 'counts', noise_model = []) {
     let state = Array(2 ** nq).fill([0, 0]);
     state[0] = [1, 0]; // a |000...000> statevector
 
-    noise_model = Array(nq).fill(noise_model);
+    if (!Array.isArray(noise_model)) {
+        noise_model = Array(nq).fill(noise_model);
+    }
 
     const outmap = {};
 
     for (let gate of d) {
-        const [op, ...args] = gate;
+        let op, args;
+
+        if (Array.isArray(gate)) {
+            [op, ...args] = gate;
+        }
+        else if (typeof gate == 'object' && gate.gate == 'init') {
+            op = 'init';
+            args = [gate.state];
+        }
+        else {
+            throw new Error('Unknown gate format: ' + JSON.stringify(gate));
+        }
 
         if (op == 'm') {
             outmap[args[1]] = args[0];
@@ -253,16 +269,16 @@ function simulate(qc, shots = 1024, get = 'counts', noise_model = []) {
             out_arr[nc - 1 - parseInt(bit)] = raw[nq - 1 - outmap[bit]];
         }
         results.push(out_arr.join(''));
-
-        if (get == 'memory') return results; // accumulated step-by-step changes
-
-        const counts = {};
-        for (let res of results) {
-            counts[res] = (counts[res] || 0) + 1;
-        }
-
-        return counts;
     }
+
+    if (get == 'memory') return results; // accumulated step-by-step changes
+
+    const counts = {};
+    for (let res of results) {
+        counts[res] = (counts[res] || 0) + 1;
+    }
+
+    return counts;
 };
 
 function rotate(x, y, theta) {

@@ -23,7 +23,7 @@
 // (Don't need to import anything in JS) Math.random() VS import math; import random
 
 import QuantumCircuit from './micromoth.js';
-import { simulate } from './micromoth.js'; // rotate, superposition, phaseturn also exist.
+import { simulate, norm, kron } from './micromoth.js'; // rotate, superposition, phaseturn also exist.
 
 // =================================================
 // ============== Test functions ===================
@@ -65,18 +65,26 @@ export function test() {
 // ============*** Quantum Blur ***==============
 // ==============================================
 
-export function quantumblur(uploadedImage, strength = 0.5) {
-    const ctx = uploadedImage.getContext("2d"); // Access to the canvas (canvas.img => The thing the user uploaded)
-    const uploadedImageData = ctx.getImageData(0, 0, uploadedImage.width, uploadedImage.height);
+export function quantumblur(strength = 0.5) {
+    const user = document.getElementById('preview');
+    const ctx = user.getContext('2d', { willReadFrequently: true});
+    let d = ctx.getImageData(0, 0, user.width, user.height);
+
+    // const ctx = uploadedImage.getContext("2d"); // Access to the canvas (canvas.img => The thing the user uploaded)
+    // const uploadedImageData = ctx.getImageData(0, 0, uploadedImage.width, uploadedImage.height);
 
     // Convert strength (1 to 10) to xi parameter (0.1 to 1.0)
     const xi = strength / 10.0
+    // console.log('xi: ', xi); // [CHECKED]
 
     // Apply Quantum Blur!
-    const circuits = blurImage(uploadedImageData, xi);
+    const circuits = blurImage(d, xi);
+    console.log('circuits: ', circuits);
 
     // Convert the result back to image
     const qbImageData = circuits2image(circuits);
+
+    console.log('qbImageData: ', qbImageData);
 
     return qbImageData;
 }
@@ -85,20 +93,110 @@ export function quantumblur(uploadedImage, strength = 0.5) {
 function blurImage(d, xi, circuits = null, axis = 'x', log = false) {
     const heights = image2heights(d);
 
+    // console.log('Heights: ', heights); // [CHECKED]
+
     if (circuits == null) circuits = [null, null, null];
 
-    for (let j = 0; j < heights.length; j++) circuits[j] = blurHeight(heights[j], xi, axis, circuits[j], log);
+    for (let j = 0; j < heights.length; j++) {
+        circuits[j] = blurHeight(heights[j], xi, axis, circuits[j], log);
+    }
+
+    console.log('Circuits: ', circuits);
 
     return circuits;
 }
 
-// 2. blurHeight(): 
+// 2. blurHeight(): Apply Quantum Blur effect to the height map
 function blurHeight(height, xi, axis = 'x', circuit = null, log = false, grid = null) {
     const [Lx, Ly] = getSize(height);
     let gridData, n;
 
-    if (grid == null) [gridData, n] = makeGrid(Lx, Ly);
-    else gridData = grid; n = Object.keys(grid)[0].length;
+    if (grid == null) {
+        [gridData, n] = makeGrid(Lx, Ly);
+    }
+    else if (typeof grid == 'object') {
+        gridData = grid;
+        const keys = Object.keys(grid);
+        if (keys.length == 0) throw new Error ('Grid has no keys');
+        n = keys[0].length;
+    }
+    else throw new Error('Grid is not an object.');
+
+    // Invert grid to coordinates as keys
+    const coordGrid = {};
+    for (const string in gridData) {
+        const [x, y] = gridData[string];
+        coordGrid[`${x},${y}`] = string;
+    }
+
+    const rates = Array(n).fill(0);
+
+    for (let x = 0; x < Lx; x++) {
+        for (let y = 0; y < Ly; y++) {
+            const key = `${x},${y}`;
+            if( !(key in coordGrid) ) continue;
+
+            const string = coordGrid[key];
+            const axes = [];
+
+            // Check neighbours
+            for (const [dX, dY] of [
+                [0, 1],
+                [0, -1], 
+                [1, 0],
+                [-1, 0],
+            ]) {
+                const closeKey = `${x + dX}, ${y + dY}`;
+                if (closeKey in coordGrid) {
+                    const nString = coordGrid[closeKey];
+
+                    // Find differing bits
+                    for (let j = 0; j < nString.length; j++) {
+                        if (nString[j] !== string[j]) axes.push(n - j - 1);
+                    }
+                }
+            }
+
+            // Add height contribution to rates
+            for (const j of axes) {
+                if (key in height) rates[j] += height[key];
+            }
+        }
+    }
+
+    // Normalise rates
+    const maxRate = Math.max(...rates);
+    if (maxRate > 0) {
+        for (let j = 0; j < n; j++) rates[j] /= maxRate;
+    }
+
+    // CREATE ROTATION CIRCUIT
+    const qcRot = new QuantumCircuit(n, n);
+    for (let j = 0; j < n; j++) {
+        const theta = Math.PI * rates[j] * Math.PI * xi;
+
+        if (axis == 'x') qcRot.rx(theta, j);
+        else qcRot.ry(theta, j);
+    }
+
+    // Combine with INITIAL CIRCUIT
+    let resultCircuit;
+    if (circuit) {
+        // In a full implementation, we'd compose the circuits
+        resultCircuit = circuit;
+        // Add rotation operations to existing circuit
+        for (const gate of qcRot.getData()) resultCircuit.getData().push(gate);
+    }
+    else {
+        const initCircuit = height2circuit(height, log);
+        resultCircuit = initCircuit;
+        // Add rotation operations
+        for (const gate of qcRot.getData()) resultCircuit.getData().push(gate);
+    }
+
+    resultCircuit.name = `(${Lx}, ${Ly})`;
+
+    return resultCircuit;
 }
 
 // =================== 2 series ====================
@@ -115,21 +213,42 @@ function image2heights(d) {
             const g = data[idx + 1]; // Green
             const b = data[idx + 2]; // Blue
 
-            heights[0][`${x}, ${y}`] = r;
-            heights[1][`${x}, ${y}`] = r;
-            heights[2][`${x}, ${y}`] = r;
+            heights[0][`${x},${y}`] = r;
+            heights[1][`${x},${y}`] = g;
+            heights[2][`${x},${y}`] = b;
         }
     }
 
     return heights;
 }
 
+// image2circuits(): Convert image to quantum circuits (one circuit per each channel)
+function image2circuits(imageData, log = false, grid = null) {
+    const heights = image2heights(imageData);
+    const circuits = [];
+
+    for (const height of heights) circuits.push(height2circuit(height, log, 1e-2, grid));
+
+    return circuits;
+}
+
+// height2circuit(): Convert height dictionary to quantum circuit
 function height2circuit(height, log = false, eps = 1e-2, grid = null) {
     const [Lx, Ly] = getSize(height);
     let gridData, n;
 
-    if (grid == null) [gridData, n] = makeGrid(Lx, Ly);
-    else gridData = grid; n = Object.keys(grid)[0].length;
+    if (grid == null) {
+        [gridData, n] = makeGrid(Lx, Ly);
+    }
+    else if (typeof grid === 'object') {
+        gridData = grid;
+        const keys = Object.keys(grid);
+        if (keys.length === 0) throw new Error("Grid has no keys");
+        n = keys[0].length;
+    }
+    else {
+        throw new Error("Grid is not an object");
+    }
 
     // Create statevector
     let statevector = Array(2 ** n).fill(null).map(() => [0, 0]);
@@ -146,7 +265,7 @@ function height2circuit(height, log = false, eps = 1e-2, grid = null) {
 
         for (const bitstring in gridData) {
             const [x, y] = gridData[bitstring];
-            const key = `${x}, ${y}`;
+            const key = `${x},${y}`;
 
             if (key in height) {
                 const h = normalisedHeight[key];
@@ -159,7 +278,7 @@ function height2circuit(height, log = false, eps = 1e-2, grid = null) {
         // Linear engoding
         for (const bitstring in gridData) {
             const [x, y] = gridData[bitstring]
-            const key = `${x}, ${y}`;
+            const key = `${x},${y}`;
 
             if (key in height) {
                 const amp = Math.sqrt(height[key]);
@@ -185,13 +304,6 @@ function circuit2probs(qc) {
     return result;
 }
 
-function probs2height(probes, size = null, log = false, grid = null) {
-    let Lx, Ly;
-    if (size) {
-        [Lx, Ly] = size;
-    }
-}
-
 // circuits2image(): Bring out Quantum circuits so that we could translate them.
 function circuits2image(circuits, log = false) {
     const heights = [];
@@ -200,10 +312,118 @@ function circuits2image(circuits, log = false) {
     return heights2image(heights);
 }
 
+// circuits2height: Convert circuit back to height dictionary
+function circuits2height(qc, log = false, grid = null) {
+    const probs = circuit2probs(qc)
+    let size;
+
+    try {
+        // Parse the name manually instead of using eval()
+
+        // JavaScript returns 5 from eval('(4, 5)') while Python returns [4, 5].
+        // That's why while probs2height() destructures [Lx, Ly] = size where size is just 5 (e.g.), ...
+
+        // ... I get the 'number ___ is not iterable' error.
+        // c.f. qc.name format is "(Lx,Ly)".
+        const match = qc.name.match(/$$(\d+),\s*(\d+)$$/)
+        if (match) {
+            size = [Number.parseInt(match[1]), Number.parseInt(match[2])]
+        } else {
+            throw new Error("Cannot parse circuit name")
+        }
+    }
+    catch {
+        const L = Math.floor(2 ** (qc.num_qubits / 2))
+        size = [L, L]
+    }
+
+    return probs2height(probs, size, log, grid) 
+}
+
+function probs2height(probs, size = null, log = false, grid = null) {
+    let Lx, Ly;
+
+    if (typeof probs != 'object' || probs == null) throw new Error('probs must be an object with bitstring keys');
+
+    if (size) {
+        [Lx, Ly] = size; // ++++++++++ Critical number error was happening here. ++++++++++++
+    }
+    else {
+        const n = Object.keys(probs)[0].length;
+        Lx = Ly = Math.floor(2 ** (n / 2));
+    }
+
+    let gridData, n;
+    if (grid == null) {
+        [gridData, n] = makeGrid(Lx, Ly);
+    }
+    else if (typeof grid === 'object' && grid !== null) {
+        gridData = grid;
+        const keys = Object.keys(grid);
+
+        if (keys.length === 0) {
+            throw new Error('Grid has no keys');
+        }
+
+        n = keys[0].length;
+    }
+    else {
+        throw new Error('Grid is not a valid object.');
+    }
+
+    const probValues = Object.values(probs);
+    console.log('Number of probability values: ', probValues.length);
+
+    let maxH = 0;
+    for (const prob of probValues) {
+        if (prob > maxH) maxH = prob;
+    }
+    // const maxH = Math.max(...Object.values(probs)); // (128 x 128) The image was too big to be spreaded.
+
+    const height = {};
+    for (let x = 0; x < Lx; x++) {
+        for (let y = 0; y < Ly; y++) {
+            height[`${x},${y}`] = 0.0;
+        }
+    }
+
+    for (const bitstring in probs) {
+        if (bitstring in gridData) {
+            const [x, y] = gridData[bitstring];
+            const key = `${x},${y}`;
+            height[key] = probs[bitstring] / maxH;
+        }
+    }
+
+    if (log) {
+        const minH = Math.min(...Object.values(height).filter((h) => h > 1e-100))
+        const base = 1 / minH;
+
+        for (const pos in height) {
+            if (height[pos] > 1e-100) {
+                height[pos] = Math.max(Math.log(height[pos] / minH) / Math.log(base), 0)
+            }
+            else {
+                height[pos] = 0.0;
+            }
+        }
+    }
+
+    return height;
+}
+
 // heights2image(): Convert height dict back to image data so that the HTML canvas instance can draw the result.
 function heights2image(heights) {
     const [Lx, Ly] = getSize(heights[0]);
-    const hMax = heights.map((h) => Math.max(...Object.values(h)));
+
+    let max = 0;
+    const hMax = heights.map((h) => {
+        for (const val of Object.values(h)) {
+            if (val > max) max = val;
+        }
+    });
+
+    // const hMax = heights.map((h) => Math.max(...Object.values(h))); // Also preventing potential spread operator issue here.
 
     const rd = new ImageData(Lx, Ly);
 
@@ -212,7 +432,7 @@ function heights2image(heights) {
             const idx = (y * Lx + x) * 4; // index
 
             for (let j = 0; j < 3; j++) {
-                const key = `${x}, ${y}`;
+                const key = `${x},${y}`;
                 const h = heights[j][key] || 0
                 const normalised = hMax[j] > 0 ? h / hMax[j] : 0
                 rd.data[idx + j] = Math.floor(255 * normalised);
@@ -229,7 +449,10 @@ function heights2image(heights) {
 // getSize(): Get size of grid from height dict
 function getSize(height) {
     let Lx = 0, Ly = 0;
-    for (const [x, y] of Object.keys(height).map((k) => k.split(',').map(Number))) Lx = Math.max(x + 1, Lx); Ly = Math.max(y + 1, Ly);
+    for (const [x, y] of Object.keys(height).map((k) => k.split(',').map(Number))) {
+        Lx = Math.max(x + 1, Lx); 
+        Ly = Math.max(y + 1, Ly);
+    }
 
     return [Lx, Ly];
 }
@@ -254,6 +477,7 @@ function makeLine(leng) {
 
 // makeGrid(): Create grid mapping for coordinates to bitstrings
 function makeGrid(Lx, Ly = null) {
+    console.log('makeGrid() is called.');
     if (Ly == null) Ly = Lx;
 
     const lineX = makeLine(Lx);

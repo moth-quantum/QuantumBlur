@@ -1,4 +1,4 @@
-import { test } from './quantumblur.js';
+import { test, quantumblur } from './quantumblur.js';
 
 document.getElementById('userImage').addEventListener('change', (e) => {
     let files = e.target.files;
@@ -50,4 +50,5 @@ document.getElementById('qbBtn').onclick = function() {
     // console.log(`Quantum Blur strength: ${strengthVal}`);
 
     // test();
+    let resultImageData = quantumblur(strengthVal);
 };
