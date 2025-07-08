@@ -40,6 +40,8 @@ body {
     object-fit: contain;
     display: block;
     margin: 10px 0;
+
+    background: white; /* White background for transparency */
 }
 
 .center {

@@ -25,41 +25,6 @@
 import QuantumCircuit from './micromoth.js';
 import { simulate, norm, kron } from './micromoth.js'; // rotate, superposition, phaseturn also exist.
 
-// =================================================
-// ============== Test functions ===================
-// =================================================
-
-function imgtest() {
-    const user = document.getElementById('preview');
-    const ctx = user.getContext('2d', { willReadFrequently: true });
-
-    let d = ctx.getImageData(0, 0, user.width, user.height);
-    const pixels = d.data;
-
-    console.log(pixels);
-}
-
-// Test the connection toward micromoth.js with Bell state and GHZ state
-function innertest() {
-    let qc = new QuantumCircuit(3, 3);
-    // Bell state
-    qc.h(0);
-    qc.cx(0, 1);
-
-    // GHZ state
-    qc.cx(1, 2);
-
-    let c = simulate(qc, 1024, 'statevector');
-    console.log(c);
-}
-
-export function test() {
-    console.log('foo');
-
-    innertest();
-
-    imgtest();
-}
 
 // ==============================================
 // ============*** Quantum Blur ***==============
@@ -79,7 +44,7 @@ export function quantumblur(strength = 0.5) {
 
     // Apply Quantum Blur!
     const circuits = blurImage(d, xi);
-    console.log('circuits: ', circuits);
+    // console.log('circuits: ', circuits);
 
     // Convert the result back to image
     const qbImageData = circuits2image(circuits);
@@ -88,6 +53,41 @@ export function quantumblur(strength = 0.5) {
 
     return qbImageData;
 }
+
+/*
+export function debugQuantumBlur(strength = 0.5) {
+    const user = document.getElementById('preview');
+    const ctx = user.getContext('2d', { willReadFrequently: true});
+    let d = ctx.getImageData(0, 0, user.width, user.height);
+    
+    console.log('=== QUANTUM BLUR DEBUG ===');
+    console.log('1. Image size:', user.width, 'x', user.height);
+    
+    const heights = image2heights(d);
+    console.log('2. Heights created:', heights.map(h => Object.keys(h).length));
+    
+    const circuits = blurImage(d, strength / 10.0);
+    console.log('3. Circuits created:', circuits.map(c => c ? c.num_qubits : 'null'));
+    
+    for (let i = 0; i < circuits.length; i++) {
+        if (circuits[i]) {
+            const probs = circuit2probs(circuits[i]);
+            const probSum = Object.values(probs).reduce((sum, p) => sum + p, 0);
+            console.log(`4.${i} Channel ${i} prob sum:`, probSum);
+            
+            if (probSum < 1e-10) {
+                console.error(`Channel ${i} has invalid probabilities!`);
+                return null;
+            }
+        }
+    }
+    
+    const qbImageData = circuits2image(circuits);
+    console.log('5. Final image created');
+    
+    return qbImageData;
+}
+*/
 
 // 1. blurImage(): QB effect itself -> image2heights(), blurHeight()
 function blurImage(d, xi, circuits = null, axis = 'x', log = false) {
@@ -101,7 +101,7 @@ function blurImage(d, xi, circuits = null, axis = 'x', log = false) {
         circuits[j] = blurHeight(heights[j], xi, axis, circuits[j], log);
     }
 
-    console.log('Circuits: ', circuits);
+    // console.log('Circuits: ', circuits);
 
     return circuits;
 }
@@ -146,7 +146,7 @@ function blurHeight(height, xi, axis = 'x', circuit = null, log = false, grid = 
                 [1, 0],
                 [-1, 0],
             ]) {
-                const closeKey = `${x + dX}, ${y + dY}`;
+                const closeKey = `${x + dX},${y + dY}`;
                 if (closeKey in coordGrid) {
                     const nString = coordGrid[closeKey];
 
@@ -194,7 +194,8 @@ function blurHeight(height, xi, axis = 'x', circuit = null, log = false, grid = 
         for (const gate of qcRot.getData()) resultCircuit.getData().push(gate);
     }
 
-    resultCircuit.name = `(${Lx}, ${Ly})`;
+    // FIX: Ensure the name is properly formatted
+    resultCircuit.name = `(${Lx},${Ly})`;  // Make sure this is exactly right
 
     return resultCircuit;
 }
@@ -314,30 +315,34 @@ function circuits2image(circuits, log = false) {
 
 // circuits2height: Convert circuit back to height dictionary
 function circuits2height(qc, log = false, grid = null) {
-    const probs = circuit2probs(qc)
+    const probs = circuit2probs(qc);
+    
     let size;
-
     try {
-        // Parse the name manually instead of using eval()
-
-        // JavaScript returns 5 from eval('(4, 5)') while Python returns [4, 5].
-        // That's why while probs2height() destructures [Lx, Ly] = size where size is just 5 (e.g.), ...
-
-        // ... I get the 'number ___ is not iterable' error.
-        // c.f. qc.name format is "(Lx,Ly)".
-        const match = qc.name.match(/$$(\d+),\s*(\d+)$$/)
+        // Try multiple regex patterns
+        let match = qc.name.match(/$$(\d+),\s*(\d+)$$/);
+        if (!match) {
+            match = qc.name.match(/$$(\d+),(\d+)$$/); // Without optional space
+        }
+        if (!match) {
+            match = qc.name.match(/(\d+),\s*(\d+)/); // Without parentheses
+        }
+        
         if (match) {
-            size = [Number.parseInt(match[1]), Number.parseInt(match[2])]
+            size = [Number.parseInt(match[1]), Number.parseInt(match[2])];
         } else {
-            throw new Error("Cannot parse circuit name")
+            throw new Error("Cannot parse circuit name: " + qc.name);
         }
     }
-    catch {
-        const L = Math.floor(2 ** (qc.num_qubits / 2))
-        size = [L, L]
+    catch (e) {
+        // CRITICAL FIX: Don't use square fallback, use original dimensions
+        // This is a temporary fix - we need to pass the original size
+        console.error('Using square fallback - this will cause issues');
+        const L = Math.floor(2 ** (qc.num_qubits / 2));
+        size = [L, L];
     }
 
-    return probs2height(probs, size, log, grid) 
+    return probs2height(probs, size, log, grid); 
 }
 
 function probs2height(probs, size = null, log = false, grid = null) {
@@ -354,8 +359,31 @@ function probs2height(probs, size = null, log = false, grid = null) {
     }
 
     let gridData, n;
+
     if (grid == null) {
         [gridData, n] = makeGrid(Lx, Ly);
+        
+        // FIX: Ensure grid matches quantum circuit bit length
+        const probKeyLength = Object.keys(probs)[0]?.length;
+        if (probKeyLength && n !== probKeyLength) {
+            console.warn(`Bit length mismatch: grid=${n}, probs=${probKeyLength}`);
+            
+            // Regenerate grid with correct dimensions to match prob key length
+            // The issue is likely that makeGrid is adding an extra bit somewhere
+            
+            // Temporary fix: filter grid to only include keys of correct length
+            
+            const filteredGrid = {};
+            for (const [key, value] of Object.entries(gridData)) {
+                if (key.length === probKeyLength) {
+                    filteredGrid[key] = value;
+                }
+            }
+            gridData = filteredGrid;
+            n = probKeyLength;
+            
+            console.log('Fixed grid entries:', Object.keys(gridData).length);
+        }
     }
     else if (typeof grid === 'object' && grid !== null) {
         gridData = grid;
@@ -372,7 +400,7 @@ function probs2height(probs, size = null, log = false, grid = null) {
     }
 
     const probValues = Object.values(probs);
-    console.log('Number of probability values: ', probValues.length);
+    // console.log('Number of probability values: ', probValues.length);
 
     let maxH = 0;
     for (const prob of probValues) {
@@ -380,34 +408,53 @@ function probs2height(probs, size = null, log = false, grid = null) {
     }
     // const maxH = Math.max(...Object.values(probs)); // (128 x 128) The image was too big to be spreaded.
 
+    // DEBUG: Check what's happening
+    console.log('probs2height DEBUG:');
+    console.log('- Number of probability entries:', Object.keys(probs).length);
+    console.log('- maxH:', maxH);
+    console.log('- Grid entries:', Object.keys(gridData).length);
+    console.log('- Sample probs:', Object.entries(probs).slice(0, 5));
+    console.log('- Sample grid:', Object.entries(gridData).slice(0, 5));
+
     const height = {};
     for (let x = 0; x < Lx; x++) {
         for (let y = 0; y < Ly; y++) {
-            height[`${x},${y}`] = 0.0;
+            height[`${x},${y}`] = 0.0; // Sets all pixels to black first here
         }
     }
 
+    let matchCount = 0;
     for (const bitstring in probs) {
         if (bitstring in gridData) {
             const [x, y] = gridData[bitstring];
             const key = `${x},${y}`;
-            height[key] = probs[bitstring] / maxH;
-        }
-    }
-
-    if (log) {
-        const minH = Math.min(...Object.values(height).filter((h) => h > 1e-100))
-        const base = 1 / minH;
-
-        for (const pos in height) {
-            if (height[pos] > 1e-100) {
-                height[pos] = Math.max(Math.log(height[pos] / minH) / Math.log(base), 0)
-            }
-            else {
-                height[pos] = 0.0;
+            height[key] = maxH > 0 ? probs[bitstring] / maxH : 0;
+            matchCount++;
+            
+            // DEBUG: Show first few matches
+            if (matchCount <= 5) {
+                console.log(`Match ${matchCount}: bitstring=${bitstring} -> (${x},${y}), prob=${probs[bitstring]}, height=${height[key]}`);
             }
         }
     }
+    
+    console.log('- Total matches found:', matchCount);
+    console.log('- Non-zero heights:', Object.values(height).filter(h => h > 0).length);
+
+    // =====
+    console.log('KEY FORMAT DEBUG:');
+    const probKeys = Object.keys(probs);
+    const gridKeys = Object.keys(gridData);
+    
+    console.log('- First 5 prob keys:', probKeys.slice(0, 5));
+    console.log('- First 5 grid keys:', gridKeys.slice(0, 5));
+    console.log('- Prob key length:', probKeys[0]?.length);
+    console.log('- Grid key length:', gridKeys[0]?.length);
+    
+    // Check if any keys match at all
+    const intersection = probKeys.filter(key => key in gridData);
+    console.log('- Keys that match:', intersection.slice(0, 5));
+    // =====
 
     return height;
 }
@@ -416,32 +463,50 @@ function probs2height(probs, size = null, log = false, grid = null) {
 function heights2image(heights) {
     const [Lx, Ly] = getSize(heights[0]);
 
-    let max = 0;
     const hMax = heights.map((h) => {
+        let max = 0;
         for (const val of Object.values(h)) {
             if (val > max) max = val;
         }
+        return max; // each hMax[j] will contain the max value of the R, G, B height maps, respectively.
     });
 
     // const hMax = heights.map((h) => Math.max(...Object.values(h))); // Also preventing potential spread operator issue here.
 
+    // DEBUG: Check what hMax values are
+    console.log('hMax values:', hMax);
+    console.log('Sample height values:', [
+        Object.values(heights[0]).slice(0, 5),
+        Object.values(heights[1]).slice(0, 5), 
+        Object.values(heights[2]).slice(0, 5)
+    ]);
+
     const rd = new ImageData(Lx, Ly);
 
+    let pixelCount = 0;
     for (let x = 0; x < Lx; x++) {
         for (let y = 0; y < Ly; y++) {
-            const idx = (y * Lx + x) * 4; // index
+            const idx = (y * Lx + x) * 4;
 
             for (let j = 0; j < 3; j++) {
                 const key = `${x},${y}`;
-                const h = heights[j][key] || 0
-                const normalised = hMax[j] > 0 ? h / hMax[j] : 0
-                rd.data[idx + j] = Math.floor(255 * normalised);
+                const h = heights[j][key] || 0;
+                const normalised = hMax[j] > 0 ? h / hMax[j] : 0;
+                const pixelValue = Math.floor(255 * normalised);
+                rd.data[idx + j] = pixelValue;
+                
+                // DEBUG: Check first few pixels
+                if (pixelCount < 5) {
+                    console.log(`Pixel ${pixelCount}, channel ${j}: h=${h}, normalised=${normalised}, final=${pixelValue}`);
+                }
             }
-            rd.data[idx + 3] = 255; // (Alpha)
+            rd.data[idx + 3] = 255; // alpha channel
+            pixelCount++;
         }
     }
 
-    return rd; // The result!
+    console.log('Image reconstruction complete');
+    return rd;
 }
 
 // ============== Image Processing ===============
@@ -477,12 +542,15 @@ function makeLine(leng) {
 
 // makeGrid(): Create grid mapping for coordinates to bitstrings
 function makeGrid(Lx, Ly = null) {
-    console.log('makeGrid() is called.');
     if (Ly == null) Ly = Lx;
+
+    // Add stack trace to see who's calling this
+    console.log('makeGrid called with:', Lx, 'x', Ly);
+    console.trace('Call stack:');
 
     const lineX = makeLine(Lx);
     const lineY = makeLine(Ly);
-
+    
     const grid = {};
     for (let x = 0; x < Lx; x++) {
         for (let y = 0; y < Ly; y++) {
@@ -492,6 +560,43 @@ function makeGrid(Lx, Ly = null) {
     }
 
     const n = lineX[0].length + lineY[0].length;
-
+    console.log('makeGrid result:', Object.keys(grid).length, 'entries,', n, 'bits');
+    
     return [grid, n];
+}
+
+// =================================================
+// ============== Test functions ===================
+// =================================================
+
+function imgtest() {
+    const user = document.getElementById('preview');
+    const ctx = user.getContext('2d', { willReadFrequently: true });
+
+    let d = ctx.getImageData(0, 0, user.width, user.height);
+    const pixels = d.data;
+
+    console.log(pixels);
+}
+
+// Test the connection toward micromoth.js with Bell state and GHZ state
+function innertest() {
+    let qc = new QuantumCircuit(3, 3);
+    // Bell state
+    qc.h(0);
+    qc.cx(0, 1);
+
+    // GHZ state
+    qc.cx(1, 2);
+
+    let c = simulate(qc, 1024, 'statevector');
+    console.log(c);
+}
+
+export function test() {
+    console.log('foo');
+
+    innertest();
+
+    imgtest();
 }

@@ -35,7 +35,7 @@ document.getElementById('userImage').addEventListener('change', (e) => {
             URL.revokeObjectURL(img.src);
         }
 
-        preview.appendChild(img);
+        // preview.appendChild(img);
     }
 });
 
@@ -51,4 +51,14 @@ document.getElementById('qbBtn').onclick = function() {
 
     // test();
     let resultImageData = quantumblur(strengthVal);
+    // let resultImageData = debugQuantumBlur(strengthVal);
+
+    // Draw the result to the canvas
+    const result = document.getElementById('result');
+    const preview = document.getElementById('preview');
+    result.width = preview.width; result.height = preview.height;
+
+    const ctx = result.getContext('2d');
+    ctx.putImageData(resultImageData, 0, 0);
+
 };
