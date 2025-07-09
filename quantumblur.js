@@ -382,7 +382,7 @@ function probs2height(probs, size = null, log = false, grid = null) {
             gridData = filteredGrid;
             n = probKeyLength;
             
-            console.log('Fixed grid entries:', Object.keys(gridData).length);
+            // console.log('Fixed grid entries:', Object.keys(gridData).length);
         }
     }
     else if (typeof grid === 'object' && grid !== null) {
@@ -408,6 +408,7 @@ function probs2height(probs, size = null, log = false, grid = null) {
     }
     // const maxH = Math.max(...Object.values(probs)); // (128 x 128) The image was too big to be spreaded.
 
+    /*
     // DEBUG: Check what's happening
     console.log('probs2height DEBUG:');
     console.log('- Number of probability entries:', Object.keys(probs).length);
@@ -415,6 +416,7 @@ function probs2height(probs, size = null, log = false, grid = null) {
     console.log('- Grid entries:', Object.keys(gridData).length);
     console.log('- Sample probs:', Object.entries(probs).slice(0, 5));
     console.log('- Sample grid:', Object.entries(gridData).slice(0, 5));
+    */
 
     const height = {};
     for (let x = 0; x < Lx; x++) {
@@ -431,13 +433,16 @@ function probs2height(probs, size = null, log = false, grid = null) {
             height[key] = maxH > 0 ? probs[bitstring] / maxH : 0;
             matchCount++;
             
+            /*
             // DEBUG: Show first few matches
             if (matchCount <= 5) {
                 console.log(`Match ${matchCount}: bitstring=${bitstring} -> (${x},${y}), prob=${probs[bitstring]}, height=${height[key]}`);
             }
+            */
         }
     }
     
+    /*
     console.log('- Total matches found:', matchCount);
     console.log('- Non-zero heights:', Object.values(height).filter(h => h > 0).length);
 
@@ -455,6 +460,7 @@ function probs2height(probs, size = null, log = false, grid = null) {
     const intersection = probKeys.filter(key => key in gridData);
     console.log('- Keys that match:', intersection.slice(0, 5));
     // =====
+    */
 
     return height;
 }
@@ -473,6 +479,7 @@ function heights2image(heights) {
 
     // const hMax = heights.map((h) => Math.max(...Object.values(h))); // Also preventing potential spread operator issue here.
 
+    /*
     // DEBUG: Check what hMax values are
     console.log('hMax values:', hMax);
     console.log('Sample height values:', [
@@ -480,6 +487,7 @@ function heights2image(heights) {
         Object.values(heights[1]).slice(0, 5), 
         Object.values(heights[2]).slice(0, 5)
     ]);
+    */
 
     const rd = new ImageData(Lx, Ly);
 
@@ -495,17 +503,19 @@ function heights2image(heights) {
                 const pixelValue = Math.floor(255 * normalised);
                 rd.data[idx + j] = pixelValue;
                 
+                /*
                 // DEBUG: Check first few pixels
                 if (pixelCount < 5) {
                     console.log(`Pixel ${pixelCount}, channel ${j}: h=${h}, normalised=${normalised}, final=${pixelValue}`);
                 }
+                    */
             }
             rd.data[idx + 3] = 255; // alpha channel
             pixelCount++;
         }
     }
 
-    console.log('Image reconstruction complete');
+    // console.log('Image reconstruction complete');
     return rd;
 }
 
@@ -545,8 +555,8 @@ function makeGrid(Lx, Ly = null) {
     if (Ly == null) Ly = Lx;
 
     // Add stack trace to see who's calling this
-    console.log('makeGrid called with:', Lx, 'x', Ly);
-    console.trace('Call stack:');
+    // console.log('makeGrid called with:', Lx, 'x', Ly);
+    // console.trace('Call stack:');
 
     const lineX = makeLine(Lx);
     const lineY = makeLine(Ly);
@@ -560,7 +570,7 @@ function makeGrid(Lx, Ly = null) {
     }
 
     const n = lineX[0].length + lineY[0].length;
-    console.log('makeGrid result:', Object.keys(grid).length, 'entries,', n, 'bits');
+    // console.log('makeGrid result:', Object.keys(grid).length, 'entries,', n, 'bits');
     
     return [grid, n];
 }
