@@ -46,8 +46,7 @@ function handleImage(src) {
         previewCanvas.height = img.naturalHeight;
         resultCanvas.width = img.naturalWidth;
         resultCanvas.height = img.naturalHeight;
-        const ctx = previewCanvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        previewCanvas.getContext('2d').drawImage(img, 0, 0);
         URL.revokeObjectURL(src);
     };
 }
@@ -60,10 +59,13 @@ function handleVideo(src) {
         resultCanvas.width = videoSource.videoWidth;
         resultCanvas.height = videoSource.videoHeight;
     };
+    // FIX: This ensures the first frame of the source video is always shown.
+    videoSource.onseeked = () => {
+        previewCanvas.getContext('2d').drawImage(videoSource, 0, 0, previewCanvas.width, previewCanvas.height);
+    };
     videoSource.onloadeddata = () => {
         videoSource.pause();
-        videoSource.currentTime = 0;
-        previewCanvas.getContext('2d').drawImage(videoSource, 0, 0, previewCanvas.width, previewCanvas.height);
+        videoSource.currentTime = 0; // Seeking to 0 will trigger the 'onseeked' event above.
     };
 }
 
@@ -83,7 +85,6 @@ processBtn.onclick = function() {
     if (mediaType === 'image') {
         processImage();
     } else if (mediaType === 'video') {
-        // Start the new two-stage process for video
         renderAllFrames();
     }
 };
@@ -99,13 +100,13 @@ function processImage() {
     }, 50);
 }
 
-// --- STAGE 1: Render all frames and store them in memory ---
+// --- STAGE 1: Render all frames and store them ---
 async function renderAllFrames() {
     const processedFrames = [];
-    const frameDuration = 1 / 30; // Assuming 30fps
+    const FPS = 30;
+    const frameDuration = 1 / FPS;
     videoSource.currentTime = 0;
 
-    // A hidden canvas to do the off-screen drawing
     const offscreenCanvas = document.createElement('canvas');
     offscreenCanvas.width = resultCanvas.width;
     offscreenCanvas.height = resultCanvas.height;
@@ -113,29 +114,28 @@ async function renderAllFrames() {
 
     async function processNextFrameToMemory() {
         if (videoSource.currentTime >= videoSource.duration) {
-            // Finished rendering, now start encoding
             statusText.textContent = 'All frames rendered. Now encoding video...';
-            encodeVideoFromFrames(processedFrames);
+            encodeVideoFromFrames(processedFrames, FPS);
             return;
         }
 
         const progress = (videoSource.currentTime / videoSource.duration) * 100;
         statusText.textContent = `Stage 1: Rendering frame... ${Math.round(progress)}%`;
 
-        // Seek the video and wait for it to be ready
-        videoSource.currentTime = Math.min(videoSource.duration, videoSource.currentTime + frameDuration);
-        await new Promise(resolve => { videoSource.onseeked = resolve; });
+        await new Promise(resolve => { videoSource.onseeked = resolve; videoSource.currentTime += frameDuration; });
 
-        // Apply quantum blur
         previewCanvas.getContext('2d', { willReadFrequently: true }).drawImage(videoSource, 0, 0, previewCanvas.width, previewCanvas.height);
         const resultImageData = quantumblur(strengthVal.value);
+        
+        // FIX: Show the first processed frame immediately for user feedback.
+        if (processedFrames.length === 0) {
+            resultCanvas.getContext('2d').putImageData(resultImageData, 0, 0);
+        }
 
-        // Draw the result to our hidden canvas and store it as a blob
         offscreenCtx.putImageData(resultImageData, 0, 0);
         const blob = await new Promise(resolve => offscreenCanvas.toBlob(resolve, 'image/jpeg', 0.9));
         processedFrames.push(blob);
 
-        // Process the next frame
         requestAnimationFrame(processNextFrameToMemory);
     }
     
@@ -143,21 +143,16 @@ async function renderAllFrames() {
     await processNextFrameToMemory();
 }
 
-
-// --- STAGE 2: Encode the stored frames into a video file ---
-function encodeVideoFromFrames(frames) {
-    const resultStream = resultCanvas.captureStream(30);
+// --- STAGE 2: Encode the stored frames into a video at the correct speed ---
+function encodeVideoFromFrames(frames, fps) {
+    const resultStream = resultCanvas.captureStream(fps);
     const mediaRecorder = new MediaRecorder(resultStream, { mimeType: 'video/webm; codecs=vp9' });
     const recordedChunks = [];
 
-    mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedChunks.push(event.data);
-    };
-
+    mediaRecorder.ondataavailable = (event) => recordedChunks.push(event.data);
     mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        downloadLink.href = url;
+        downloadLink.href = URL.createObjectURL(blob);
         downloadLink.download = 'quantum-blur-video.webm';
         downloadLink.style.display = 'block';
         statusText.textContent = 'Video encoding complete!';
@@ -166,12 +161,13 @@ function encodeVideoFromFrames(frames) {
 
     mediaRecorder.start();
 
-    // This loop plays back the stored frames in real-time
     let frameIndex = 0;
     const resultCtx = resultCanvas.getContext('2d');
     
-    function drawNextFrame() {
+    // FIX: Use a timed interval instead of requestAnimationFrame to ensure the correct framerate.
+    const interval = setInterval(() => {
         if (frameIndex >= frames.length) {
+            clearInterval(interval);
             mediaRecorder.stop();
             return;
         }
@@ -179,16 +175,13 @@ function encodeVideoFromFrames(frames) {
         const progress = (frameIndex / frames.length) * 100;
         statusText.textContent = `Stage 2: Encoding video... ${Math.round(progress)}%`;
 
-        // Create an image from the blob and draw it to the canvas being recorded
         const img = new Image();
         img.onload = () => {
             resultCtx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(img.src); // Clean up memory
-            frameIndex++;
-            requestAnimationFrame(drawNextFrame);
+            URL.revokeObjectURL(img.src);
         };
         img.src = URL.createObjectURL(frames[frameIndex]);
-    }
-
-    drawNextFrame();
+        
+        frameIndex++;
+    }, 1000 / fps);
 }
