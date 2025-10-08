@@ -20,10 +20,13 @@ def run():
             cap = cv2.VideoCapture(0) # *** Modify the number based on the port number of a USB webcam!
             while True:
                 ret, frame = cap.read()
-                k = 0xFF & cv2.waitKey(1)
-                cv2.imshow('Quantum Blur', frame)
                 
                 # ========== The camera window is now opened ===========
+                # Display strength value on frame
+                cv2.putText(frame, str(strength), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3)
+                
+                cv2.imshow('Quantum Blur', frame)
+                k = 0xFF & cv2.waitKey(1)
                 
                 if k == 32 or k == 13:  # Space or Enter key
                     # 3 seconds of countdown
@@ -35,12 +38,15 @@ def run():
                             display_frame = countdown_frame.copy()
                             cv2.putText(display_frame, str(countdown), (250, 300), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 10, (255, 255, 0), 15)
-                            cv2.imshow('Quantum Blur', display_frame) # The name of the window
-                            cv2.waitKey(3)  # Small delay to refresh display
                             
-                    cv2.putText(display_frame, 'Processing... Standby!', (250, 300), cv2.FONT_HERSHEY_SIMPLEX, 10, (0, 0, 0), 15)
-                    cv2.imshow('Quantum Blur', display_frame)
-                    cv2.waitKey(1)  # Display the message
+                            cv2.imshow('Quantum Blur', display_frame) # The name of the window
+                            cv2.waitKey(1)  # Small delay to refresh display
+                    
+                    # Capture fresh frame to display the message
+                    ret, processing_frame = cap.read()
+                    cv2.putText(processing_frame, 'Processing... Standby!', (250, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 15)
+                    cv2.imshow('Quantum Blur', processing_frame)
+                    cv2.waitKey(1) # Small delay to refresh display
                     
                     # Take the photo
                     ret, final_frame = cap.read()
