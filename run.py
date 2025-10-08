@@ -17,7 +17,7 @@ def run():
         enable = input('Camera: ')
         strength = 0.5 # default value for Quantum Blur
         if enable == 'photobooth':
-            cap = cv2.VideoCapture(0)
+            cap = cv2.VideoCapture(0) # *** Modify the number based on the port number of a USB webcam!
             while True:
                 ret, frame = cap.read()
                 k = 0xFF & cv2.waitKey(1)
@@ -34,9 +34,13 @@ def run():
                             # Display countdown on frame
                             display_frame = countdown_frame.copy()
                             cv2.putText(display_frame, str(countdown), (250, 300), 
-                                        cv2.FONT_HERSHEY_SIMPLEX, 10, (0, 255, 0), 15)
-                            cv2.imshow('Quantum Blur', display_frame)
-                            cv2.waitKey(1)  # Small delay to refresh display
+                                        cv2.FONT_HERSHEY_SIMPLEX, 10, (255, 255, 0), 15)
+                            cv2.imshow('Quantum Blur', display_frame) # The name of the window
+                            cv2.waitKey(3)  # Small delay to refresh display
+                            
+                    cv2.putText(display_frame, 'Processing... Standby!', (250, 300), cv2.FONT_HERSHEY_SIMPLEX, 10, (0, 0, 0), 15)
+                    cv2.imshow('Quantum Blur', display_frame)
+                    cv2.waitKey(1)  # Display the message
                     
                     # Take the photo
                     ret, final_frame = cap.read()
@@ -45,14 +49,33 @@ def run():
                     # ========== Image is saved in local storage ===========
                     # Now, let's do something to this image.
                     
+                    # Modify the size so that QB won't take forever.
+                    original = Image.open('quantumblur.jpg') 
+                    new_size = (int(original.width * 0.4), int(original.height * 0.4))
+                    original = original.resize(new_size, Image.LANCZOS)
+                    # MacBook Pro: Modified from 1920x1080 -> Dramatically faster!
+                    # If we buy a 720p webcam, we can adjust the scale factor from 0.4 to 0.2, etc.
                     
+                    # Built-in blur effect: xi = 0 (no blur) <-> xi = 1 (strong blur effect)
+                    blurred = qb.circuits2image(qb.blur_image(original, strength))
+                    blurred.save('result.jpg')
+                    
+                    # *** Now send this to the printer
                     
                 elif k == ord('w') or k == ord('W'):
                     print('Increasing QB strengh...')
                     strength += 0.1
+                    if (strength > 1.0):
+                        strength = 1.0
+                    elif (strength < 0.0):
+                        strength = 0.0
                 elif k == ord('s') or k == ord('S'):
                     print('Decreasing QB strength...')
                     strength -= 0.1
+                    if (strength > 1.0):
+                        strength = 1.0
+                    elif (strength < 0.0):
+                        strength = 0.0
                 elif k == ord('p') or k == ord('P'):
                     print('Finish the loop.')
                     cap.release()
