@@ -5,6 +5,8 @@ import numpy as np
 from PIL import Image
 import os
 
+import threading
+
 def init():
     while True:
         boot = input('Activate: ')
@@ -88,6 +90,8 @@ def run():
         thumbnail_regions = []  # Store clickable regions
         selected_photo_index = -1  # Track selected photo (-1 means most recent)
         
+        printing_jobs = set()
+        
         # Variables for double-click detection
         last_click_time = 0
         last_click_region = None
@@ -125,14 +129,13 @@ def run():
                                     if key == ord('l') or key == ord('L'):
                                         # Print the image
                                         print(f'Printing: {region["path"]}')
-                                        # *** Send to printer here
-                                        # For macOS, you can use: os.system(f'lp "{region["path"]}"')
-                                        # For now, just show a confirmation
-                                        confirm_img = full_image.copy()
-                                        cv2.putText(confirm_img, 'Sent to printer! Press any key to continue', 
-                                                   (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-                                        cv2.imshow('Quantum Blur', confirm_img)
-                                        cv2.waitKey(2000)  # Show confirmation for 2 seconds
+                                        # *** PRINTER ***
+                                        
+                                        # For macOS, you can use: os.system(f'lp "{region["path"]}"') For now, just show a confirmation
+                                        # confirm_img = full_image.copy()
+                                        # cv2.putText(confirm_img, 'Sent to printer! Press any key to continue', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+                                        # cv2.imshow('Quantum Blur', confirm_img)
+                                        # cv2.waitKey(2000)  # Show confirmation for 2 seconds
                                     else:
                                         # Any other key returns to camera
                                         break
@@ -160,7 +163,7 @@ def run():
                 
                 # ========== The camera window is now opened ===========
                 # Display strength value on frame
-                cv2.putText(frame, str(strength), (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3)
+                cv2.putText(frame, f'{strength:.1f}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3) # Adjusted the value because of floating-point imprecision.
                 
                 # Display controls info
                 cv2.putText(frame, 'Space: Capture | W/S: Blur +/- | Backspace: Delete Selected | P: Exit', 
