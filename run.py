@@ -2,10 +2,11 @@ import quantumblur as qb
 import cv2
 import time
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import os
 
 import threading
+import subprocess
 
 def init():
     while True:
@@ -81,6 +82,47 @@ def create_display_with_camera_roll(frame, camera_roll, thumbnail_height=120, se
     
     return canvas, thumbnail_regions
 
+def print_in_background(photo_path, printer_name, job_tracker):
+    """
+    Sends a photo to the specified CUPS printer in a background thread
+    using the more robust subprocess module.
+    """
+    job_tracker.add(photo_path)
+    print(f"Adding {photo_path} to the print queue for '{printer_name}'...")
+
+    try:
+        # Create the command as a list of arguments
+        command_args = [
+            "/usr/bin/lp",
+            "-d", printer_name,
+            "-o", "fit-to-page",
+            photo_path
+        ]
+
+        # Run the command
+        result = subprocess.run(
+            command_args, 
+            capture_output=True,  # Captures the output and errors
+            text=True             # Decodes output and errors as text
+        )
+
+        # Check if the command was successful
+        if result.returncode == 0:
+            print(f"Successfully sent {photo_path} to the printer.")
+        else:
+            # If there was an error, print the details
+            print("--- PRINTING ERROR ---")
+            print(f"Command failed with exit code: {result.returncode}")
+            print(f"Standard Output: {result.stdout}")
+            print(f"Standard Error: {result.stderr}")
+            print("----------------------")
+
+    except Exception as e:
+        print(f"A Python exception occurred while trying to print: {e}")
+        
+    finally:
+        job_tracker.remove(photo_path)
+
 def run():
     while True:
         enable = input('Camera: ')
@@ -128,15 +170,32 @@ def run():
                                     
                                     if key == ord('l') or key == ord('L'):
                                         # Print the image
-                                        print(f'Printing: {region["path"]}')
+                                        print(f'Printing: {region['path']}')
+                                        
                                         # *** PRINTER ***
                                         
+                                        printer_name = 'Canon_SELPHY_CP1500' # lpstat -p -d => printer Canon_SELPHY_CP1500 is idle. etc...
+                                        # photo_to_print = region['path']
+                                        photo_to_print = os.path.abspath(region['path']) # Recommended setting: Using the absolute path
+                                        # Because of the Python script execution path ({$HOME}) VS lp command path (/usr/bin/)
+                                        
+                                        if photo_to_print in printing_jobs:
+                                            print(f"{photo_to_print} is already in the print queue.")
+                                        else:
+                                            print_thread = threading.Thread(
+                                                target=print_in_background,
+                                                args=(photo_to_print, printer_name, printing_jobs)
+                                            )
+                                            print_thread.start()
+                                            
+                                            
                                         # For macOS, you can use: os.system(f'lp "{region["path"]}"') For now, just show a confirmation
                                         # confirm_img = full_image.copy()
                                         # cv2.putText(confirm_img, 'Sent to printer! Press any key to continue', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
                                         # cv2.imshow('Quantum Blur', confirm_img)
                                         # cv2.waitKey(2000)  # Show confirmation for 2 seconds
                                     else:
+                                        
                                         # Any other key returns to camera
                                         break
                             # Reset double-click tracking
@@ -228,6 +287,9 @@ def run():
                     result_filename = f'result_{photo_counter}.jpg'
                     blurred.save(result_filename)
                     camera_roll.append(result_filename)
+                    
+                    # *** MOTH Quantum *** => For 
+                    
                     
                     # Select the newly captured photo
                     selected_photo_index = len(camera_roll) - 1
