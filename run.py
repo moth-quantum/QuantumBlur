@@ -16,6 +16,109 @@ def init():
             break
         else:
             print('Invalid.')
+            
+def draw_text_with_custom_font(cv_image, text, position, font_path, font_size, color=(255, 255, 255)):
+    """
+    Draws text on an OpenCV image using a custom TTF font.
+
+    :param cv_image: The OpenCV image (NumPy array).
+    :param text: The text string to draw.
+    :param position: A tuple (x, y) for the top-left corner of the text.
+    :param font_path: The path to the .ttf font file.
+    :param font_size: The size of the font.
+    :param color: The text color in BGR format.
+    :return: The OpenCV image with the text drawn on it.
+    """
+    # Convert the OpenCV image from BGR to RGB color space
+    rgb_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+    
+    # Create a Pillow Image object from the NumPy array
+    pil_image = Image.fromarray(rgb_image)
+    
+    # Create a Draw object to allow drawing on the image
+    draw = ImageDraw.Draw(pil_image)
+    
+    # Load the custom font
+    try:
+        font = ImageFont.truetype(font_path, font_size)
+    except IOError:
+        print(f"Font not found at {font_path}. Using default font.")
+        font = ImageFont.load_default()
+
+    # Draw the text on the Pillow image
+    # Note: Pillow uses RGB color format, so we convert the BGR input
+    draw.text(position, text, font=font, fill=(color[2], color[1], color[0]))
+    
+    # Convert the Pillow image back to a NumPy array
+    final_np_image = np.array(pil_image)
+    
+    # Convert the color space back from RGB to BGR for OpenCV
+    final_cv_image = cv2.cvtColor(final_np_image, cv2.COLOR_RGB2BGR)
+    
+    return final_cv_image
+
+def add_branding(base_image, logo_path, text, font_path):
+    """
+    Adds a logo and text overlay to a PIL image with proportional sizing and positioning.
+
+    :param base_image: The base PIL Image to draw on.
+    :param logo_path: The path to the transparent logo PNG file.
+    :param text: The marketing text to display.
+    :param font_path: The path to the .ttf font file.
+    :return: The base_image with branding applied.
+    """
+    try:
+        # Open the logo image, ensuring it has an alpha channel for transparency
+        logo = Image.open(logo_path).convert("RGBA")
+    except FileNotFoundError:
+        print(f"Error: Logo file not found at {logo_path}. Skipping overlay.")
+        return base_image
+
+    # --- 1. Proportional Sizing ---
+    # Set the logo's height to be 8% of the base image's height
+    logo_height = int(base_image.height * 0.08)
+    # Calculate the logo's width to maintain its original aspect ratio
+    logo_aspect_ratio = logo.width / logo.height
+    logo_width = int(logo_height * logo_aspect_ratio)
+    
+    # Resize the logo using a high-quality filter for smoothness
+    logo = logo.resize((logo_width, logo_height), Image.LANCZOS)
+
+    # --- 2. Proportional Positioning ---
+    # Create a 2% margin from the bottom-right corner of the image
+    margin = int(base_image.width * 0.02)
+    logo_x = base_image.width - logo_width - margin
+    logo_y = base_image.height - logo_height - margin
+
+    # Paste the logo onto the base image. The 'logo' argument passed as the mask
+    # ensures that the transparent parts of the PNG are handled correctly.
+    base_image.paste(logo, (logo_x, logo_y), logo)
+
+    # --- 3. Proportional Font and Text ---
+    try:
+        # Set the font size to be 40% of the logo's height for visual consistency
+        font_size = int(logo_height * 0.4)
+        font = ImageFont.truetype(font_path, font_size)
+    except IOError:
+        print(f"Error: Font file not found at {font_path}. Using default font.")
+        font = ImageFont.load_default()
+
+    # Position the text to the left of the logo
+    draw = ImageDraw.Draw(base_image)
+    
+    # Get the bounding box of the text to calculate its width and height
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+
+    # Position text to be left of the logo, with a small gap, and vertically centered with it
+    text_x = logo_x - text_width - int(margin * 0.5)
+    text_y = logo_y + (logo_height - text_height) // 2
+    
+    # Draw the text (white with slight transparency for a softer look)
+    draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255, 220))
+
+    return base_image
 
 def create_display_with_camera_roll(frame, camera_roll, thumbnail_height=120, selected_index=-1):
     """Create a composite display with camera feed and thumbnail roll at bottom"""
@@ -124,6 +227,8 @@ def print_in_background(photo_path, printer_name, job_tracker):
         job_tracker.remove(photo_path)
 
 def run():
+    moth_font = '/Users/astrydpark/Documents/GitHub/QuantumBlur-SG/fonts/ttf/Sohne/sohne.ttf'
+    
     while True:
         enable = input('Camera: ')
         strength = 0.5 # default value for Quantum Blur
@@ -163,8 +268,25 @@ def run():
                                 while True:
                                     # Create a copy to add instructions
                                     display_img = full_image.copy()
-                                    cv2.putText(display_img, 'L: Print | Any other key: Return to camera', 
-                                               (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                    ''' We don't need to add strength to the photo viewer
+                                    display_img = draw_text_with_custom_font (
+                                        cv_image = display_img,
+                                        text = f'{strength: .1f}',
+                                        position = (50, 20),
+                                        font_path = moth_font,
+                                        font_size = 20,
+                                        color = (255, 255, 255)
+                                    )
+                                    '''
+                                    
+                                    display_img = draw_text_with_custom_font (
+                                        cv_image = display_img,
+                                        text = 'L: Print | Any other key: Return to camera',
+                                        position = (20, 40),
+                                        font_path = moth_font,
+                                        font_size = 20,
+                                        color = (255, 255, 255)
+                                    )
                                     cv2.imshow('Quantum Blur', display_img)
                                     key = cv2.waitKey(0)  # Wait for key press
                                     
@@ -189,11 +311,7 @@ def run():
                                             print_thread.start()
                                             
                                             
-                                        # For macOS, you can use: os.system(f'lp "{region["path"]}"') For now, just show a confirmation
-                                        # confirm_img = full_image.copy()
-                                        # cv2.putText(confirm_img, 'Sent to printer! Press any key to continue', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
-                                        # cv2.imshow('Quantum Blur', confirm_img)
-                                        # cv2.waitKey(2000)  # Show confirmation for 2 seconds
+                                        
                                     else:
                                         
                                         # Any other key returns to camera
@@ -222,11 +340,25 @@ def run():
                 
                 # ========== The camera window is now opened ===========
                 # Display strength value on frame
-                cv2.putText(frame, f'{strength:.1f}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3) # Adjusted the value because of floating-point imprecision.
+                frame = draw_text_with_custom_font (
+                    cv_image = frame,
+                    text = f'{strength:.1f}', # Adjusted the value because of floating-point imprecision.
+                    position = (50, 50),
+                    font_path = moth_font,
+                    font_size = 20,
+                    color = (255, 255, 255)
+                )
+                # cv2.putText(frame, f'{strength:.1f}', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 0), 3)
                 
                 # Display controls info
-                cv2.putText(frame, 'Space: Capture | W/S: Blur +/- | Backspace: Delete Selected | P: Exit', 
-                           (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+                frame = draw_text_with_custom_font (
+                    cv_image = frame,
+                    text = 'Space: Capture | W/S: Blur +/- | Backspace: Delete Selected | P: Exit', 
+                    position = (10, frame.shape[0] - 10),
+                    font_path = moth_font,
+                    font_size = 20,
+                    color = (255, 255, 255)
+                )
                 
                 # Update selected_photo_index if it's out of bounds
                 if selected_photo_index >= len(camera_roll):
@@ -248,8 +380,14 @@ def run():
                             ret, countdown_frame = cap.read()
                             # Display countdown on frame
                             countdown_display = countdown_frame.copy()
-                            cv2.putText(countdown_display, str(countdown), (250, 300), 
-                                        cv2.FONT_HERSHEY_SIMPLEX, 10, (255, 255, 0), 15)
+                            countdown_display = draw_text_with_custom_font (
+                                cv_image = countdown_display,
+                                text = str(countdown),
+                                position = (250, 300),
+                                font_path = moth_font,
+                                font_size = 20,
+                                color = (255, 255, 255)
+                            )
                             
                             # Add camera roll to countdown display
                             display_frame, _ = create_display_with_camera_roll(
@@ -260,7 +398,16 @@ def run():
                     
                     # Capture fresh frame to display the message
                     ret, processing_frame = cap.read()
-                    cv2.putText(processing_frame, 'Processing... Standby!', (250, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 15)
+                    
+                    processing_frame = draw_text_with_custom_font(
+                        cv_image = processing_frame,
+                        text = 'Image Processing with Quantum...',
+                        position = (250, 300),
+                        font_path = moth_font,
+                        font_size = 20,
+                        color = (255, 255, 255)
+                    )
+                    
                     processing_display, _ = create_display_with_camera_roll(
                         processing_frame, camera_roll, selected_index=selected_photo_index
                     )
@@ -282,14 +429,21 @@ def run():
                     # Built-in blur effect: xi = 0 (no blur) <-> xi = 1 (strong blur effect)
                     blurred = qb.circuits2image(qb.blur_image(original, strength))
                     
+                    # *** MOTH Quantum *** => For branding (Logo & MSG)
+                    hello = 'made with Quantum Blur, by MOTH'
+                    logo = '/Users/astrydpark/Documents/GitHub/QuantumBlur-SG/MOTH.png'
+                    final_final = add_branding(
+                        base_image=blurred,
+                        logo_path=logo,
+                        text=hello,
+                        font_path=moth_font
+                    )
+                    
                     # Save with unique filename
                     photo_counter += 1
                     result_filename = f'result_{photo_counter}.jpg'
-                    blurred.save(result_filename)
+                    final_final.save(result_filename)
                     camera_roll.append(result_filename)
-                    
-                    # *** MOTH Quantum *** => For 
-                    
                     
                     # Select the newly captured photo
                     selected_photo_index = len(camera_roll) - 1
