@@ -268,25 +268,26 @@ def run():
                                 while True:
                                     # Create a copy to add instructions
                                     display_img = full_image.copy()
-                                    ''' We don't need to add strength to the photo viewer
-                                    display_img = draw_text_with_custom_font (
-                                        cv_image = display_img,
-                                        text = f'{strength: .1f}',
-                                        position = (50, 20),
-                                        font_path = moth_font,
-                                        font_size = 20,
-                                        color = (255, 255, 255)
-                                    )
-                                    '''
+                                    
                                     
                                     display_img = draw_text_with_custom_font (
                                         cv_image = display_img,
-                                        text = 'L: Print | Any other key: Return to camera',
+                                        text = 'Press L to Print',
                                         position = (20, 40),
                                         font_path = moth_font,
                                         font_size = 20,
                                         color = (255, 255, 255)
                                     )
+                                    
+                                    display_img = draw_text_with_custom_font (
+                                        cv_image = display_img,
+                                        text = 'Press any key to return',
+                                        position = (20, 60),
+                                        font_path = moth_font,
+                                        font_size = 20,
+                                        color = (255, 255, 255)
+                                    )
+                                    
                                     cv2.imshow('Quantum Blur', display_img)
                                     key = cv2.waitKey(0)  # Wait for key press
                                     
@@ -308,9 +309,7 @@ def run():
                                                 target=print_in_background,
                                                 args=(photo_to_print, printer_name, printing_jobs)
                                             )
-                                            print_thread.start()
-                                            
-                                            
+                                            print_thread.start()   
                                         
                                     else:
                                         
@@ -353,10 +352,28 @@ def run():
                 # Display controls info
                 frame = draw_text_with_custom_font (
                     cv_image = frame,
-                    text = 'Space: Capture | W/S: Blur +/- | Backspace: Delete Selected | P: Exit', 
-                    position = (10, frame.shape[0] - 10),
+                    text = 'Space or Enter to take photo, Backspace to delete photo', 
+                    position = (10, frame.shape[0] - 90),
                     font_path = moth_font,
-                    font_size = 20,
+                    font_size = 16,
+                    color = (255, 255, 255)
+                )
+                
+                frame = draw_text_with_custom_font (
+                    cv_image = frame,
+                    text = 'W or S for adding  more or less strength to Quantum Blur', 
+                    position = (10, frame.shape[0] - 60),
+                    font_path = moth_font,
+                    font_size = 16,
+                    color = (255, 255, 255)
+                )
+                
+                frame = draw_text_with_custom_font (
+                    cv_image = frame,
+                    text = 'Backspace to delete photo from photo roll', 
+                    position = (10, frame.shape[0] - 30),
+                    font_path = moth_font,
+                    font_size = 16,
                     color = (255, 255, 255)
                 )
                 
