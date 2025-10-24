@@ -122,12 +122,9 @@ def add_branding(base_image, logo_path, text, font_path):
 
 def create_display_with_camera_roll(frame, camera_roll, thumbnail_height=120, selected_index=-1):
     """Create a composite display with camera feed and thumbnail roll at bottom"""
-    if not camera_roll:
-        return frame, []
-    
     frame_height, frame_width = frame.shape[:2]
     
-    # Create a larger canvas to fit frame + camera roll
+    # Always create a larger canvas to fit frame + camera roll (for consistent window size)
     canvas_height = frame_height + thumbnail_height + 10
     canvas = np.zeros((canvas_height, frame_width, 3), dtype=np.uint8)
     
@@ -136,6 +133,10 @@ def create_display_with_camera_roll(frame, camera_roll, thumbnail_height=120, se
     
     # Add separator line
     cv2.line(canvas, (0, frame_height), (frame_width, frame_height), (100, 100, 100), 2)
+    
+    # If no photos yet, return the canvas with empty thumbnail area
+    if not camera_roll:
+        return canvas, []
     
     # Calculate thumbnail dimensions
     max_thumbnails = 5  # Show last 5 photos
@@ -261,9 +262,12 @@ def run():
                         )
                         
                         if is_double_click:
-                            # Double-click: Open full-size image
+                            # Double-click: Open full-size image in separate window
                             full_image = cv2.imread(region['path'])
                             if full_image is not None:
+                                # Create a separate window for photo viewing
+                                cv2.namedWindow('Photo Viewer', cv2.WINDOW_NORMAL)
+                                
                                 # View loop for the full-size image
                                 while True:
                                     # Create a copy to add instructions
@@ -288,7 +292,7 @@ def run():
                                         color = (255, 255, 255)
                                     )
                                     
-                                    cv2.imshow('Quantum Blur', display_img)
+                                    cv2.imshow('Photo Viewer', display_img)
                                     key = cv2.waitKey(0)  # Wait for key press
                                     
                                     if key == ord('l') or key == ord('L'):
@@ -299,8 +303,8 @@ def run():
                                         
                                         printer_name = 'Canon_SELPHY_CP1500' # lpstat -p -d => printer Canon_SELPHY_CP1500 is idle. etc...
                                         # photo_to_print = region['path']
-                                        photo_to_print = os.path.abspath(region['path']) # Recommended setting: Using the absolute path
-                                        # Because of the Python script execution path ({$HOME}) VS lp command path (/usr/bin/)
+                                        photo_to_print = os.path.abspath(region['path']) # Recommended setting: Using the absolute path
+                                        # Because of the Python script execution path ({$HOME}) VS lp command path (/usr/bin/)
                                         
                                         if photo_to_print in printing_jobs:
                                             print(f"{photo_to_print} is already in the print queue.")
@@ -312,8 +316,8 @@ def run():
                                             print_thread.start()   
                                         
                                     else:
-                                        
                                         # Any other key returns to camera
+                                        cv2.destroyWindow('Photo Viewer')
                                         break
                             # Reset double-click tracking
                             last_click_time = 0
