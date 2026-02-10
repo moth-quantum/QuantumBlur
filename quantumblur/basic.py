@@ -23,7 +23,7 @@ Thus, no job will be created and overload the system. Nice!
 
 # Get the required input for API.
 def run(blurStyle, blurStrength, imgForm, imgData, imgCoor):
-    prevImg = Image.open(BytesIO(imgData))
+    prevImg = Image.open(BytesIO(imgData)).convert("RGB")
     
     # blurStrength is a float between 0.0 and 1.0 so it could be used for blur_image's 'xi' param.
     style = blurStyle
