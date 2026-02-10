@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "quantumblur"
+version = "0.1.0"
+description = "Quantum image processing using Qiskit"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = [
+    "qiskit>=1.0",
+    "qiskit-aer>=0.13",
+    "numpy",
+    "scipy",
+    "Pillow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools.packages.find]
+include = ["quantumblur*"]
