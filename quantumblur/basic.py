@@ -1,4 +1,4 @@
-from quantumblur import *
+from .quantumblur import *
 from PIL import Image
 from io import BytesIO
 
