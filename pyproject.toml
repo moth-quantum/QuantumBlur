@@ -5,7 +5,7 @@ description = "Quantum image processing using Qiskit"
 packages = [{include = "quantumblur"}]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = "^3.10"
 qiskit = ">=1.0"
 qiskit-aer = ">=0.13"
 numpy = "*"
