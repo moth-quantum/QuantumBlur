@@ -701,7 +701,7 @@ def circuits2image(circuits, log=False, callback=None):
     """
 
     heights = []
-    for qc in circuits:
+    for j, qc in circuits:
         heights.append( circuit2height(qc, log=log) )
         if callback:
             callback(j + 1, len(circuits))
