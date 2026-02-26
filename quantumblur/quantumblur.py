@@ -688,7 +688,7 @@ def image2circuits(image, log=False, grid=None):
     return circuits
 
 
-def circuits2image(circuits, log=False):
+def circuits2image(circuits, log=False, callback=None):
     """
     Extracts an image from list of circuits encoding the RGB channels.
 
@@ -703,6 +703,8 @@ def circuits2image(circuits, log=False):
     heights = []
     for qc in circuits:
         heights.append( circuit2height(qc, log=log) )
+        if callback:
+            callback(j + 1, len(circuits))
 
     return _heights2image(heights)
 
@@ -829,7 +831,7 @@ def blur_height(height, xi, axis='x', circuit=None, log=False, grid=None):
     return circuit
 
 
-def blur_image(image, xi, circuits=None, axis='x',log=False):
+def blur_image(image, xi, circuits=None, axis='x', log=False, callback=None):
     """
     Applies a predetermined blur effect designed for a smooth blur.
     
@@ -854,6 +856,9 @@ def blur_image(image, xi, circuits=None, axis='x',log=False):
     
     for j,height in enumerate(heights):
         circuits[j] = blur_height(height, xi, axis=axis, circuit=circuits[j], log=log)
+        
+        if callback:
+            callback(j+1, len(heights)) # Test callback
         
 
     return circuits
