@@ -12,17 +12,22 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+# Basic import
 import math
 import random
+
+# Something related to quantum
 from qiskit import QuantumCircuit, quantum_info
-from qiskit_aer import Aersimulator
+from qiskit_aer import AerSimulator
 from qiskit_aer.library import SaveStatevectorDict
 
+# Something related to fast calculation
 import numpy as np
+import jax.numpy as jnp # JAX provides jax.numpy which closely mirrors the NumPy API
 from scipy.linalg import fractional_matrix_power
 from PIL.Image import new as newimage, Image
 
-def _kron(vec0,vec1):
+def _kron(vec0,vec1): # This could be replaced with numpy.kron() -> jax.numpy.jron(a, b) (returns Array)
     """
     Calculates the tensor product of two vectors.
     """
@@ -49,15 +54,13 @@ def circuit2probs(qc):
     """
     Runs the given circuit, and returns the resulting probabilities.
     """
-    if simple_python:
-        probs = simulate(qc,get='probabilities_dict')
-    else:
-        qc_run = qc.copy()
-        qc_run.append(SaveStatevectorDict(qc.num_qubits),qc.qregs[0])
-        rawamps = AerSimulator().run(qc_run,shots=1).result().data()['statevector_dict']
-        probs = {}
-        for string, amp in rawamps.items():
-            probs[str(bin(int(string,16))[2::].zfill(qc.num_qubits))] = np.abs(amp)**2
+    qc_run = qc.copy()
+    qc_run.append(SaveStatevectorDict(qc.num_qubits),qc.qregs[0])
+    rawamps = AerSimulator().run(qc_run,shots=1).result().data()['statevector_dict']
+    probs = {}
+    for string, amp in rawamps.items():
+        # probs[str(bin(int(string,16))[2::].zfill(qc.num_qubits))] = np.abs(amp)**2
+        probs[str(bin(int(string, 16))[2::].zfill(qc.num_qubits))] = jnp.absolute(amp) ** 2
     
     return probs
 
@@ -131,7 +134,7 @@ def make_line ( length ):
             
     return line
 
-
+# Isn't this can be replaced with v / np.linalg.norm(v)?
 def normalize(ket):
     """
     Normalizes the given statevector.
