@@ -12,122 +12,15 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-
-"""
-The imports that follow are highly non-standard and require some explanation. 
-
-This file is designed to run in both a modern, fully functioning Python
-environment, with Python 3.x and the ability to use external libraries.
-It is also designed to function using only the standard library (in
-addition to MicroMoth) in any Python from 2.7 onwards.
-
-The deciding factor is whether Qiskit is available to be imported. If so,
-the following external libraries are required dependencies:
-
-qiskit
-numpy
-scipy
-PIL
-
-Otherwise, MicroMoth will be used in place of Qiskit, and alternative
-techniques using only the standard library will be used in place of the
-other dependencies.
-
-More information on Qiskit can be found at
-
-https://qiskit.org
-
-and information on MicroMoth can be found at
-
-https://github.com/moth-quantum/MicroMoth
-"""
-
 import math
 import random
+from qiskit import QuantumCircuit, quantum_info
+from qiskit_aer import Aersimulator
+from qiskit_aer.library import SaveStatevectorDict
 
-# determine whether qiskit can be used, or whether to default to
-# MicrMoth and the standard library
-try:
-    from qiskit import QuantumCircuit, quantum_info
-    from qiskit_aer import AerSimulator
-    from qiskit_aer.library import SaveStatevectorDict
-    simple_python = False
-except:
-    print('Unable to import Qiskit, so MicroMoth will be used instead')
-    from micromoth import QuantumCircuit, simulate
-    simple_python = True
-
-    
-# this is overwritten by the PIL class if available
-class Image():
-    """
-    A minimal reimplementation of the the PIL Image.Image class, to allow all
-    image based tools to function even when only the standard library is
-    available.
-    
-    To initialize an Image oject, use the `newimage` function.
-    
-    Attributes:
-        mode (str): If L, pixel values are a single integer. If 'RGB', they
-            are a tuple of three integers.
-        size (tuple): Specifies width and height.
-    """
-    def __init__(self):
-        self.mode = None
-        self.size = None
-        self._image_dict = None
-    def getpixel(self,xy):
-        """
-        Returns pixel value at the given coordinate.
-        """
-        return self._image_dict[xy]
-    def putpixel(self, xy, value):
-        """
-        Sets the pixel value at the given coordinate.
-        """
-        self._image_dict[xy] = value
-    def todict(self):
-        """
-        Returns dictionary of pixel values with coordinates as keys.
-        Not present in PIL version.
-        """
-        return self._image_dict
-    def show(self):
-        """
-        If the PIL version of this class is used, this function creates a PNG
-        image and displays it. This version instead simply prints all
-        coordinates and pixel values.
-        """
-        for x in range(self.size[0]):
-            for y in range(self.size[1]):
-                print('('+str(x)+','+str(y)+')'+': '+str(self._image_dict[x,y]))
-    def resize(self, new_size, method):
-        print("This functionality has not been implemented.")
-
-# this is overwritten by the PIL function if available               
-def newimage(mode, size):
-    """
-    A minimal reimplementation of the the PIL Image.new function.
-    Creates an Image object for the given mode and size.
-    """
-    img = Image()
-    img.mode = mode
-    img.size = size
-    if mode=='L':
-        blank = 0
-    elif mode=='RGB':
-        blank = (0,0,0)
-    img._image_dict = {(x,y):blank\
-                for x in range(size[0])\
-                for y in range(size[1])}
-    return img
-
-# if external libraries can be used, import the ones we need
-if not simple_python:
-    import numpy as np
-    from scipy.linalg import fractional_matrix_power
-    from PIL.Image import new as newimage, Image
-
+import numpy as np
+from scipy.linalg import fractional_matrix_power
+from PIL.Image import new as newimage, Image
 
 def _kron(vec0,vec1):
     """
