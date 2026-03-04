@@ -87,8 +87,5 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
 
     # Return the required output for API.
     return {
-        "msg": 'End process for Quantum Blur.',
-        "output": output, # This is the byte representation of the blurred image
-        # "format": format, # '.png' or something like that
-        # "isFormatCorrect": imgForm == format # true/false
+        "output": output,
     }

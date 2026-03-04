@@ -42,6 +42,13 @@ and information on MicroMoth can be found at
 https://github.com/moth-quantum/MicroMoth
 """
 
+# Further information of Python libraries
+# Because this one is used for API calls, it's already using PIL.Image with its API call.
+# Thus, there's no need to manually construct Image class here.
+# Furthermore, this API call should only use Qiskit only, rather than Micromoth.
+# All Python requirements will be hosted in AWS instance. 
+
+
 import math
 import random
 
@@ -701,7 +708,7 @@ def circuits2image(circuits, log=False, callback=None):
     """
 
     heights = []
-    for j, qc in circuits:
+    for j, qc in enumerate(circuits):
         heights.append( circuit2height(qc, log=log) )
         if callback:
             callback(j + 1, len(circuits))
