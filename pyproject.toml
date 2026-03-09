@@ -1,0 +1,15 @@
+[project]
+name = "quantumblur"
+version = "0.1.0"
+description = "Upgrade Quantum Blur with latest Qiskit and JAX"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "qiskit>=2.0", # supports latest Qiskit
+    "qiskit_aer>=0.17.0", # for Qskit 2.x
+    "pillow",
+    "numpy",
+    "scipy",
+    "jax",
+    "jaxlib"
+]

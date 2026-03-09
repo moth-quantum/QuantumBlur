@@ -1,1 +1,1 @@
-from quantumblur import *
+from .quantumblur import *

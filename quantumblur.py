@@ -17,27 +17,15 @@ import math
 import random
 
 # Something related to quantum
-from qiskit import QuantumCircuit, quantum_info
+from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
 from qiskit_aer.library import SaveStatevectorDict
 
-# Something related to fast calculation
+# Something related to fast calculation (no more handwritten Maths operations!)
 import numpy as np
 import jax.numpy as jnp # JAX provides jax.numpy which closely mirrors the NumPy API
-from scipy.linalg import fractional_matrix_power
+
 from PIL.Image import new as newimage, Image
-
-def _kron(vec0,vec1): # This could be replaced with numpy.kron() -> jax.numpy.jron(a, b) (returns Array)
-    """
-    Calculates the tensor product of two vectors.
-    """
-    new_vec = []
-    for amp0 in vec0:
-        for amp1 in vec1:
-            new_vec.append(amp0*amp1)
-    return new_vec
-
-
 def _get_size(height):
     """
     Determines the size of the grid for the given height map.
@@ -64,21 +52,31 @@ def circuit2probs(qc):
     
     return probs
 
-
 def _image2heights(image):
     """
     Converts an rgb image into a list of three height dictionaries, one for
     each colour channel.
     """
+    
+    # Apply JAX
+    pixels = jnp.array(image) # shape: (Ly, Lx, 3)
+    heights = jnp.transpose(pixels, (2, 1, 0)) # shape: (3, Lx, Ly)
+    
+    ''' Before
     Lx,Ly = image.size
     heights = [{} for j in range(3)]
+    
     for x in range(Lx):
         for y in range(Ly):
             rgb = image.getpixel((x,y))
             for j in range(3):
                 heights[j][x,y] = rgb[j]
+    '''
 
-    return heights
+    return heights # Now returns a JAX array of shape (3, Lx, Ly)
+    # Changes are needed for every other functions,
+    # such as _heights2image, swap_images, image2circuits, blur_image
+    # because the original setup expects a list of dicts with (x,y) keys.
 
 
 def _heights2image(heights):
@@ -281,11 +279,7 @@ def height2circuit(height, log=False, eps=1e-2, grid=None):
         
     # define and initialize quantum circuit            
     qc = QuantumCircuit(n)
-    if simple_python:
-        # micromoth style
-        qc.initialize(state)
-    else:
-        qc.initialize(state, range(n))
+    qc.initialize(state, range(n))
     qc.name = '('+str(Lx)+','+str(Ly)+')'
 
     return qc
@@ -390,28 +384,27 @@ def combine_circuits(qc0,qc1):
     kets = [None,None]
     for j,qc in enumerate([qc0, qc1]):
         for gate in qc.data:
-            if simple_python:
-                assert gate[0]=='init', warning
-                kets[j] = gate[1]
-            else:
-                assert gate[0].name=='initialize', warning
-                kets[j] = gate[0].params
+            # suppors latest version
+            assert gate.operation.name=='initialize', warning
+            kets[j] = gate[0].params
+            
+            # ==== This is deprecated in Qiskit 3.0 ====
+            # assert gate[0].name=='initialize', warning
+            # kets[j] = gate[0].params
+            # ==========================================
 
     # combine into a statevector for all the qubits
     ket = None
     if kets[0] and kets[1]:
-        ket = _kron(kets[0], kets[1])
+        ket = jnp.kron(kets[0], kets[1])
     elif kets[0]:
-        ket = _kron(kets[0], [1]+[0]*(2**qc1.num_qubits-1))
+        ket = jnp.kron(kets[0], [1]+[0]*(2**qc1.num_qubits-1))
     elif kets[1]:
-        ket = _kron([1]+[0]*(2**qc0.num_qubits-1),kets[1])
+        ket = jnp.kron([1]+[0]*(2**qc0.num_qubits-1),kets[1])
 
     # use this to initialize
     if ket:
-        if simple_python:
-            combined_qc.initialize(ket)
-        else:
-            combined_qc.initialize(ket,range(num_qubits))
+        combined_qc.initialize(ket,range(num_qubits))
     
     # prevent circuit name from being used for size determination
     combined_qc.name = 'None'
@@ -426,24 +419,12 @@ def partialswap(combined_qc, fraction):
     """
     num_qubits = int(combined_qc.num_qubits/2)
     
-    if not simple_python:
-        U = np.array([
-        [1, 0, 0, 0],
-        [0, 0, 1, 0],
-        [0, 1, 0, 0],
-        [0, 0, 0, 1]
-        ])
-        U = fractional_matrix_power(U,fraction)
     for q in range(num_qubits):
         q0 = q
         q1 = num_qubits + q
-        if not simple_python:
-            combined_qc.unitary(U, [q0,q1],\
-                                 label='partial_swap')
-        else:
-            combined_qc.cx(q1,q0)
-            combined_qc.crx(math.pi*fraction,q0,q1)
-            combined_qc.cx(q1,q0)  
+        combined_qc.cx(q1,q0)
+        combined_qc.crx(math.pi*fraction,q0,q1)
+        combined_qc.cx(q1,q0)  
 
             
 def probs2marginals(combined_qc, probs):
@@ -710,15 +691,9 @@ def blur_height(height, xi, axis='x', circuit=None, log=False, grid=None):
             
     # add to initial circuit
     if circuit:
-        if simple_python:
-            circuit = circuit + qc_rot
-        else:
-            circuit = circuit.compose(qc_rot)
+        circuit = circuit.compose(qc_rot)
     else:
-        if simple_python:
-            circuit = height2circuit(height,log=log) + qc_rot
-        else:
-            circuit = circuit = height2circuit(height,log=log).compose(qc_rot)
+        circuit = height2circuit(height,log=log).compose(qc_rot)
 
     circuit.name = '('+str(Lx)+','+str(Ly)+')'
         
@@ -836,10 +811,7 @@ def dotdot(L,diamond=0,delta=0,depth=0):
 
     # extend at top
     qc.rx(math.pi+dt(),1)
-    if simple_python:
-        qc.crx(math.pi/2,1,nr+2)
-    else:
-        qc.ch(1,nr+2)
+    qc.ch(1,nr+2)
     qc.x(1)
 
     # cover with cz gates to entangle everything
@@ -851,11 +823,6 @@ def dotdot(L,diamond=0,delta=0,depth=0):
             for j in range(n):
                 qc.rx(dt(),j)
             for c,t in r1+r2:
-                if simple_python:
-                    qc.h(t)
-                    qc.cx(c,t)
-                    qc.h(t)
-                else:
-                    qc.cz(c,t)
+                qc.cz(c,t)
 
     return qc, line
