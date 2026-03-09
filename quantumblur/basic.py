@@ -69,6 +69,11 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
                                    callback=lambda c, t: _fire())
         logger.debug("Built %d blur circuits", len(blur_circuits))
 
+    elif (style == 'swirl'): # c.f. This is for the new swirl effect!
+        logger.info("Building circuits...for swirl. (strength=%.2f)", blurStrength)
+        blur_circuits = swirl_image(prevImg, blurStrength, callback=lambda c, t: _fire())
+        logger.debug("Built %d swirl circuits", len(blur_circuits))
+
     logger.info("Applying quantum blur")
     resultImg = circuits2image(blur_circuits,
                                callback=lambda c, t:_fire()) # Returns the RGB image.
