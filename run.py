@@ -228,7 +228,7 @@ def print_in_background(photo_path, printer_name, job_tracker):
         job_tracker.remove(photo_path)
 
 def run():
-    moth_font = '/Users/astrydpark/Documents/GitHub/QuantumBlur-SG/fonts/ttf/Sohne/sohne.ttf'
+    moth_font = '/Users/astrydpark/Documents/GitHub/QuantumPhotoBooth/fonts/ttf/Sohne/sohne.ttf'
     
     while True:
         enable = input('Camera: ')
