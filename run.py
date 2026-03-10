@@ -452,7 +452,7 @@ def run():
                     
                     # *** MOTH Quantum *** => For branding (Logo & MSG)
                     hello = 'made with Quantum Blur, by MOTH'
-                    logo = '/Users/astrydpark/Documents/GitHub/QuantumBlur-SG/MOTH.png'
+                    logo = '/Users/astrydpark/Documents/GitHub/QuantumPhotoBooth/MOTH.png'
                     final_final = add_branding(
                         base_image=blurred,
                         logo_path=logo,
