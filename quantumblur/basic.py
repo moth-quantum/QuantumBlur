@@ -98,19 +98,20 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
 
 
 def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
-    """NotTeleportation effect — morphs between two same-sized images via quantum rx rotations.
+    """NotTeleportation effect — morphs between two images via quantum rx rotations.
     c.f. NotTeleportation.ipynb
 
-    Input images should be power-of-2 dimensions for correct qubit indexing.
+    img2 is automatically resized to match img1 if dimensions differ.
 
     Callback signature
         callback(current_step: int, total_steps: int) -> None
 
-        Steps (22 total with default num_frames=20):
-            1    - images loaded and combined
-            2-21 - quantum circuit frames rendered
-            22   - output encoded
+        Steps (num_frames + 2 total):
+            1                - images loaded and combined
+            2 .. num_frames+1 - quantum circuit frames rendered
+            num_frames+2     - output encoded
     """
+    import math
 
     step, total = 0, num_frames + 2
 
@@ -124,15 +125,21 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
     img1 = Image.open(BytesIO(img1Data)).convert("RGB")
     img2 = Image.open(BytesIO(img2Data)).convert("RGB")
 
+    # Auto-resize img2 to match img1 (img1 is the "primary" — it sets the size)
+    if img2.size != img1.size:
+        logger.info("Resizing image2 from %s to %s to match image1", img2.size, img1.size)
+        img2 = img2.resize(img1.size, Image.LANCZOS)
+
     # Combine side-by-side: img1 on left, img2 on right
-    both = Image.new("RGB", (img1.size[0] + img2.size[0], max(img1.size[1], img2.size[1])))
+    both = Image.new("RGB", (img1.size[0] + img2.size[0], img1.size[1]))
     both.paste(img1)
     both.paste(img2, (img1.size[0], 0))
     logger.debug("Combined canvas size: %s", both.size)
 
     _fire()  # images loaded and combined
 
-    first_horiz_q = int(np.log2(both.size[1]))
+    # math.ceil — correct for non-power-of-2 heights (notebook used int(np.log2()) which is wrong)
+    first_horiz_q = math.ceil(math.log2(both.size[1]))
     logger.debug("first_horiz_q: %d", first_horiz_q)
 
     frames = []
