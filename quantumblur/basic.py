@@ -70,7 +70,7 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
                                    callback=lambda c, t: _fire())
         logger.debug("Built %d blur circuits", len(blur_circuits))
 
-    elif (style == 'swirl'): # c.f. This is for the new swirl effect!
+    elif (style == 'swirl'): # c.f. This is for the new swirl effect! (It's unnecessary - test purpose)
         logger.info("Building circuits...for swirl. (strength=%.2f)", blurStrength)
         blur_circuits = swirl_image(prevImg, blurStrength, callback=lambda c, t: _fire())
         logger.debug("Built %d swirl circuits", len(blur_circuits))
@@ -97,21 +97,27 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
     }
 
 
-def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
-    """NotTeleportation effect — morphs between two images via quantum rx rotations.
-    c.f. NotTeleportation.ipynb
+def _to_pow2(n):
+    """Round up to the nearest power of 2."""
+    return 1 << (n - 1).bit_length() # Bitshift operation for faster calculation
 
-    Images can be any size. They are combined side-by-side at their original
-    dimensions (shorter image is padded with black). Output is cropped to
-    img2's dimensions — the animation shows img1 morphing into img2.
+
+def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
+    """Teleportation effect — morphs between two images via quantum rx rotations.
+
+    Images can be any size. Both are resized to matching power-of-2
+    dimensions so that:
+      - equal widths: the teleportation boundary falls exactly between the two images
+      - power-of-2: int(np.log2()) targets the correct qubit
+    Output dimensions equal the shared power-of-2 size.
 
     Callback signature
         callback(current_step: int, total_steps: int) -> None
 
-        Steps (num_frames + 2 total):
-            1                - images loaded and combined
-            2 .. num_frames+1 - quantum circuit frames rendered
-            num_frames+2     - output encoded
+        Steps (num_frames + 2 total): # e.g. 22
+            1. images loaded and combined
+            2. frames rendered on quantum circuit
+            3. output encoded
     """
 
     step, total = 0, num_frames + 2
@@ -126,15 +132,25 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
     img1 = Image.open(BytesIO(img1Data)).convert("RGB")
     img2 = Image.open(BytesIO(img2Data)).convert("RGB")
 
-    # Combine side-by-side at original sizes (matches notebook exactly)
-    both = Image.new("RGB", (img1.size[0] + img2.size[0], max(img1.size[1], img2.size[1])))
+    # Resize both to matching power-of-2 dimensions so that:
+    # 1. Equal widths -> teleportation boundary aligns with the image boundary
+    # 2. Power-of-2 -> int(np.log2()) gives the correct qubit (matches notebook)
+    target_w = _to_pow2(max(img1.width, img2.width)) # This must be less than 1024px (current API)
+    target_h = _to_pow2(max(img1.height, img2.height)) # This must be less than 1024px (current API)
+    # It's already filtered on the API side: MAX_WIDTH 512 (Half of 1024) so it should be fine.
+    img1 = img1.resize((target_w, target_h), Image.LANCZOS)
+    img2 = img2.resize((target_w, target_h), Image.LANCZOS)
+    logger.debug("Resized to power-of-2: %dx%d", target_w, target_h)
+
+    # Combine side-by-side — canvas is (2 * target_w, target_h), both powers of 2
+    both = Image.new("RGB", (target_w * 2, target_h))
     both.paste(img1)
-    both.paste(img2, (img1.size[0], 0))
+    both.paste(img2, (target_w, 0))
     logger.debug("Combined canvas size: %s", both.size)
 
     _fire()  # images loaded and combined
 
-    # int(np.log2()) — matches notebook; the qubit targeting is part of the effect's character
+    # int(np.log2()) — matches notebook; always correct because target_h is a power of 2
     first_horiz_q = int(np.log2(both.size[1]))
     logger.debug("first_horiz_q: %d", first_horiz_q)
 
@@ -146,18 +162,19 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
         for qc in qcs:
             for q in range(qc.num_qubits):
                 if q == first_horiz_q:
-                    theta = np.pi * fraction  # flip images with each other
+                    theta = np.pi * fraction  # swap left and right (teleportation comes from here)
                 elif q == first_horiz_q + 1:
-                    theta = 0 * np.pi * fraction  # flip each image to correct orientation (if needed)
+                    theta = 0 * np.pi * fraction  # reserved for orientation correction
                 elif q < first_horiz_q:
-                    theta = 2 * np.pi * fraction  # apply an effect vertically
+                    theta = 2 * np.pi * fraction  # vertical flow effect
                 else:
                     theta = 0
                 qc.rx(theta, q)
 
         img = circuits2image(qcs)
-        # Crop to img2's dimensions — output shows the morphed result at img2's size
-        frames.append(img.crop((0, 0, img2.size[0], img2.size[1])))
+        # Crop left half
+        # the teleported result at (target_w, target_h)
+        frames.append(img.crop((0, 0, target_w, target_h)))
         logger.debug("Frame %d/%d (fraction=%.3f)", f + 1, num_frames, fraction)
 
         _fire()  # frame rendered
