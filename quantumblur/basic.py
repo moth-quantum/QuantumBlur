@@ -2,6 +2,7 @@ from .quantumblur import *
 from PIL import Image
 from io import BytesIO
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -95,72 +96,69 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
         "output": output,
     }
 
-# This one is for teleportation effect.
-def teleport(img1, img2, n_frame=16, duration=100, loop=0, callback=None):
-    """
-    Apply the teleportation algorithm to morph between two images into a GIF.
 
-    1. Combines both images side-by-side, encodes it into quantum circuits.
-    2. Applies per-frame RX rotations to create an interpolation.
-    3. The result is cropped to img2's dimensions (the half-left of the canvas)
+def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
+    """NotTeleportation effect — morphs between two same-sized images via quantum rx rotations.
+    c.f. NotTeleportation.ipynb
 
-    Callback signature:
-        callback(current_frame: int, total_frames: int) -> None
+    Input images should be power-of-2 dimensions for correct qubit indexing.
 
-        Fires once per frame (* n_frames)
+    Callback signature
+        callback(current_step: int, total_steps: int) -> None
 
-    Args:
-        img1: bytes - first image
-        img2: bytes - second image
-        n_frames: frame number in GIF animation (default: 16)
-        duration: per-frame duration in milliseconds (default: 100ms)
-        loop: number of GIF loops, 0 = infinite (default 0)
-        callback: for UI
-
-    Returns:
-        dict with "output" key containing animated GIF bytes
+        Steps (22 total with default num_frames=20):
+            1    - images loaded and combined
+            2-21 - quantum circuit frames rendered
+            22   - output encoded
     """
 
-    import math
+    step, total = 0, num_frames + 2
 
-    logger.info("Loading images...")
-    i1 = Image.open(BytesIO(img1)).convert("RGB"); i2 = Image.open(BytesIO(img2)).convert("RGB")
-
-    # Make a big canvas that puts i1 on the right and i2 on the left.
-    h = max(i1.height, i2.height)
-    canvas = Image.new("RGB", (i1.width+i2.width, h))
-    canvas.paste(i1, (0, 0)); canvas.paste(i2, (i1.width, 0))
-
-    # Encode the canvas once; copy circuits per frame to avoid re-encoding
-    base_circuits = image2circuits(canvas)
-
-    # Number of y-axis qubits
-    # The notebook uses int(np.log2(height)) which gives the wrong index for non-power-of-2 heights. math.ceil matches the actual qubit count in make_grid.
-    q = math.ceil(math.log2(h))
-    frames = []
-    for frame in range(n_frame):
-        f = frame / (n_frame - 1)
-        logger.debug("Teleportation frame %d/%d (fraction=%.3f)", frame + 1, n_frame, f)
-
-        frame_circuits = []
-        for qc in base_circuits:
-            frame_qc = qc.copy()
-            for quantum in range(frame_qc.num_qubits):
-                if quantum == q:
-                    frame_qc.rx(math.pi * f, quantum) # swaps two images
-                elif quantum < q:
-                    frame_qc.rx(2 * math.pi * f, quantum)
-                # qubits beyond q: no rotation
-            frame_circuits.append(frame_qc)
-        
-        results = circuits2image(frame_circuits)
-        # Crop to i2's dimensions - the left portion of the output canvas
-
-        frames.append(results.crop((0, 0, i2.width, i2.height)))
-
+    def _fire():
+        nonlocal step
+        step += 1
         if callback:
-            callback(frame + 1, n_frame)
+            callback(step, total)
 
+    logger.info("Loading images for teleportation")
+    img1 = Image.open(BytesIO(img1Data)).convert("RGB")
+    img2 = Image.open(BytesIO(img2Data)).convert("RGB")
+
+    # Combine side-by-side: img1 on left, img2 on right
+    both = Image.new("RGB", (img1.size[0] + img2.size[0], max(img1.size[1], img2.size[1])))
+    both.paste(img1)
+    both.paste(img2, (img1.size[0], 0))
+    logger.debug("Combined canvas size: %s", both.size)
+
+    _fire()  # images loaded and combined
+
+    first_horiz_q = int(np.log2(both.size[1]))
+    logger.debug("first_horiz_q: %d", first_horiz_q)
+
+    frames = []
+    for f in range(num_frames):
+        fraction = f / (num_frames - 1) if num_frames > 1 else 0
+        qcs = image2circuits(both)
+
+        for qc in qcs:
+            for q in range(qc.num_qubits):
+                if q == first_horiz_q:
+                    theta = np.pi * fraction  # flip images with each other
+                elif q == first_horiz_q + 1:
+                    theta = 0 * np.pi * fraction  # flip each image to correct orientation (if needed)
+                elif q < first_horiz_q:
+                    theta = 2 * np.pi * fraction  # apply an effect vertically
+                else:
+                    theta = 0
+                qc.rx(theta, q)
+
+        img = circuits2image(qcs)
+        frames.append(img.crop((0, 0, img2.size[0], img2.size[1])))
+        logger.debug("Frame %d/%d (fraction=%.3f)", f + 1, num_frames, fraction)
+
+        _fire()  # frame rendered
+
+    logger.info("Encoding GIF (%d frames, %dms/frame)", num_frames, duration)
     buffer = BytesIO()
     frames[0].save(
         buffer,
@@ -168,9 +166,13 @@ def teleport(img1, img2, n_frame=16, duration=100, loop=0, callback=None):
         save_all=True,
         append_images=frames[1:],
         duration=duration,
-        loop=loop,
+        loop=0,
     )
-    return {"output": buffer.getvalue()}
+    output = buffer.getvalue()
+    logger.debug("Output size: %d bytes", len(output))
 
+    _fire()  # output encoded
 
-        
+    return {
+        "output": output,
+    }
