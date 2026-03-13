@@ -140,6 +140,7 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
     # It's already filtered on the API side: MAX_WIDTH 512 (Half of 1024) so it should be fine.
     img1 = img1.resize((target_w, target_h), Image.LANCZOS)
     img2 = img2.resize((target_w, target_h), Image.LANCZOS)
+    img2 = img2.transpose(Image.FLIP_LEFT_RIGHT) # flip so that effect unflips
     logger.debug("Resized to power-of-2: %dx%d", target_w, target_h)
 
     # Combine side-by-side — canvas is (2 * target_w, target_h), both powers of 2
@@ -164,9 +165,9 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
                 if q == first_horiz_q:
                     theta = np.pi * fraction  # swap left and right (teleportation comes from here)
                 elif q == first_horiz_q + 1:
-                    theta = 0 * np.pi * fraction  # reserved for orientation correction
+                    theta = 0 * np.pi * fraction  # flip each image to the correct orientation (if needed)
                 elif q < first_horiz_q:
-                    theta = 2 * np.pi * fraction  # vertical flow effect
+                    theta = 2 * np.pi * fraction  # apply an effect vertically
                 else:
                     theta = 0
                 qc.rx(theta, q)
