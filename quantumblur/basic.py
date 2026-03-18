@@ -29,31 +29,34 @@ Thus, no job will be created and overload the system. Nice!
 def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
     """Callback signature
         callback(current step: int, total_steps: int) -> None
-        
-        Steps (8 total):
+
+        Steps (8 for RGB, 10 for RGBA):
             1   - image loaded
             2-4 - blur circuit built per RGB channel (from blur_image)
             5-7 - quantum simulation run per RGB channel (from circuits2image)
-            8   - output encoded
+            8-9 - alpha channel blur (RGBA only)
+            10  - output encoded
     """
     
     step, total = 0, 8
-    
+
     def _fire():
         nonlocal step
         step += 1
         if callback:
             callback(step, total)
-    
+
     logger.info("Loading image")
+    original_alpha = None
     prevImg = Image.open(BytesIO(imgData))
     if prevImg.mode == "RGBA":
-        alpha = prevImg.split()[3]
+        original_alpha = prevImg.split()[3]
+        total = 10  # 2 extra steps for alpha channel blur
         bg = Image.new("RGB", prevImg.size, (255, 255, 255))
-        bg.paste(prevImg, mask=alpha)
+        bg.paste(prevImg, mask=original_alpha)
         if all(mx - mn < 10 for mn, mx in bg.getextrema()):
             bg = Image.new("RGB", prevImg.size, (0, 0, 0))
-            bg.paste(prevImg, mask=alpha)
+            bg.paste(prevImg, mask=original_alpha)
         prevImg = bg
     else:
         prevImg = prevImg.convert("RGB")
@@ -88,14 +91,31 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
     logger.info("Applying quantum blur")
     resultImg = circuits2image(blur_circuits,
                                callback=lambda c, t:_fire()) # Returns the RGB image.
-    
+
+    # If the input had transparency, blur the alpha channel through a 4th quantum circuit
+    if original_alpha is not None:
+        logger.info("Blurring alpha channel")
+        Lx, Ly = original_alpha.size
+        alpha_height = {(x, y): original_alpha.getpixel((x, y))
+                        for x in range(Lx) for y in range(Ly)}
+        if style == 'swirl':
+            alpha_circuit = swirl_height(alpha_height, blurStrength)
+        else:
+            alpha_circuit = blur_height(alpha_height, blurStrength)
+        _fire()  # alpha circuit built
+        blurred_alpha = height2image(circuit2height(alpha_circuit))
+        _fire()  # alpha simulation done
+        resultImg = resultImg.convert("RGBA")
+        resultImg.putalpha(blurred_alpha)
+
     logger.debug("Result image size: %s", resultImg.size)
-    
+
     buffer = BytesIO()
-    # format = resultImg.format
-    # This processing is already done. Should the API call handle this?
     logger.info("Encoding result as %s", imgForm)
-    resultImg.save(buffer, format=imgForm) # So that the output PNG e.g. can be also a PNG.
+    # JPEG/BMP don't support alpha — fall back to RGB
+    if resultImg.mode == "RGBA" and imgForm.upper() in ("JPEG", "JPG", "BMP"):
+        resultImg = resultImg.convert("RGB")
+    resultImg.save(buffer, format=imgForm)
     output = buffer.getvalue()
     logger.debug("Output size: %d bytes", len(output))
     
