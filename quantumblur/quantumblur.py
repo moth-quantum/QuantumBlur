@@ -372,6 +372,9 @@ def height2circuit(height, log=False, eps=1e-2, grid=None):
     
     # create required state vector
     state = [0]*(2**n)
+
+    if max(height.values()) == 0:
+        height = {pos:1 for pos in height}
     if log:
         # normalize heights
         max_h = max(height.values())
