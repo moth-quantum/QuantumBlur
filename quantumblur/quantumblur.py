@@ -199,6 +199,7 @@ def _heights2image(heights):
     """
     Lx,Ly = _get_size(heights[0])
     h_max = [max(height.values()) for height in heights]
+    h_max = [h if h > 0 else 1 for h in h_max] 
 
     image = newimage('RGB',(Lx,Ly))
     for x in range(Lx):
@@ -259,6 +260,8 @@ def normalize(ket):
     N = 0
     for amp in ket:
         N += amp*amp.conjugate()
+    if N == 0:
+        return ket
     for j,amp in enumerate(ket):
         ket[j] = float(amp)/math.sqrt(N)
     return ket
@@ -438,7 +441,9 @@ def probs2height(probs, size=None, log=False, grid=None, min_h=None):
         grid, n = make_grid(Lx,Ly)
     
     # set height to probs value, rescaled such that the maximum is 1
-    max_h = max( probs.values() )   
+    max_h = max( probs.values() )
+    if max_h == 0:
+        max_h = 1
     height = {(x,y):0.0 for x in range(Lx) for y in range(Ly)}
     for bitstring in probs:
         if bitstring in grid:
@@ -633,6 +638,8 @@ def height2image(height):
     """
     Lx,Ly = _get_size(height)
     h_max = max(height.values())
+    if h_max == 0:
+        h_max = 1
 
     image = newimage('L',(Lx,Ly))
     for x in range(Lx):
@@ -792,7 +799,7 @@ def blur_height(height, xi, axis='x', circuit=None, log=False, grid=None):
     # invert grid dict to have coords as keys
     coord_grid = {grid[string]:string for string in grid}
     
-    rates = [0]*n
+    rates = [0]*n 
     for x in range(Lx):
         for y in range(Ly):
             # for this point, go through all neighbours
@@ -812,8 +819,11 @@ def blur_height(height, xi, axis='x', circuit=None, log=False, grid=None):
 
     # normalize the rates
     max_rate = max(rates)
-    for j in range(n):
-        rates[j] /= max_rate
+    if max_rate == 0:
+        rates = [1] * n
+    else:
+        for j in range(n):
+            rates[j] /= max_rate
         
     # make the circuit the rotation
     qc_rot = QuantumCircuit(n)
