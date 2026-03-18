@@ -46,7 +46,13 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
             callback(step, total)
     
     logger.info("Loading image")
-    prevImg = Image.open(BytesIO(imgData)).convert("RGB")
+    prevImg = Image.open(BytesIO(imgData)) # .convert("RGB")
+    if prevImg.mode == "RGBA": # For transparent PNGs
+        transparent = Image.new("RGB", prevImg.size, (255, 255, 255)) # Make the transparent background to white colour
+        transparent.paste(prevImg, mask=prevImg.split()[3]) # use alpha as paste mask
+        prevImg = transparent
+    else:
+        prevImg = prevImg.convert("RGB")
     logger.debug("Image size: %s, mode: %s", prevImg.size, prevImg.mode)
 
     # blurStrength is a float between 0.0 and 1.0 so it could be used for blur_image's 'xi' param.
