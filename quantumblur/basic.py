@@ -46,11 +46,15 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
             callback(step, total)
     
     logger.info("Loading image")
-    prevImg = Image.open(BytesIO(imgData)) # .convert("RGB")
-    if prevImg.mode == "RGBA": # For transparent PNGs
-        transparent = Image.new("RGB", prevImg.size, (255, 255, 255)) # Make the transparent background to white colour
-        transparent.paste(prevImg, mask=prevImg.split()[3]) # use alpha as paste mask
-        prevImg = transparent
+    prevImg = Image.open(BytesIO(imgData))
+    if prevImg.mode == "RGBA":
+        alpha = prevImg.split()[3]
+        bg = Image.new("RGB", prevImg.size, (255, 255, 255))
+        bg.paste(prevImg, mask=alpha)
+        if all(mx - mn < 10 for mn, mx in bg.getextrema()):
+            bg = Image.new("RGB", prevImg.size, (0, 0, 0))
+            bg.paste(prevImg, mask=alpha)
+        prevImg = bg
     else:
         prevImg = prevImg.convert("RGB")
     logger.debug("Image size: %s, mode: %s", prevImg.size, prevImg.mode)
@@ -135,8 +139,28 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
             callback(step, total)
 
     logger.info("Loading images for teleportation")
-    img1 = Image.open(BytesIO(img1Data)).convert("RGB")
-    img2 = Image.open(BytesIO(img2Data)).convert("RGB")
+    img1 = Image.open(BytesIO(img1Data))
+    if img1.mode == "RGBA":
+        alpha = img1.split()[3]
+        bg = Image.new("RGB", img1.size, (255, 255, 255))
+        bg.paste(img1, mask=alpha)
+        if all(mx - mn < 10 for mn, mx in bg.getextrema()):
+            bg = Image.new("RGB", img1.size, (0, 0, 0))
+            bg.paste(img1, mask=alpha)
+        img1 = bg
+    else:
+        img1 = img1.convert("RGB")
+    img2 = Image.open(BytesIO(img2Data))
+    if img2.mode == "RGBA":
+        alpha = img2.split()[3]
+        bg = Image.new("RGB", img2.size, (255, 255, 255))
+        bg.paste(img2, mask=alpha)
+        if all(mx - mn < 10 for mn, mx in bg.getextrema()):
+            bg = Image.new("RGB", img2.size, (0, 0, 0))
+            bg.paste(img2, mask=alpha)
+        img2 = bg
+    else:
+        img2 = img2.convert("RGB")
 
     # Resize both to matching power-of-2 dimensions so that:
     # 1. Equal widths -> teleportation boundary aligns with the image boundary

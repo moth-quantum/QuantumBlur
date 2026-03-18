@@ -14,126 +14,23 @@
 
 
 """
-The imports that follow are highly non-standard and require some explanation. 
+Quantum image processing using Qiskit.
 
-This file is designed to run in both a modern, fully functioning Python
-environment, with Python 3.x and the ability to use external libraries.
-It is also designed to function using only the standard library (in
-addition to MicroMoth) in any Python from 2.7 onwards.
+Dependencies: qiskit, numpy, scipy, PIL
 
-The deciding factor is whether Qiskit is available to be imported. If so,
-the following external libraries are required dependencies:
-
-qiskit
-numpy
-scipy
-PIL
-
-Otherwise, MicroMoth will be used in place of Qiskit, and alternative
-techniques using only the standard library will be used in place of the
-other dependencies.
-
-More information on Qiskit can be found at
-
-https://qiskit.org
-
-and information on MicroMoth can be found at
-
-https://github.com/moth-quantum/MicroMoth
+More information on Qiskit can be found at https://qiskit.org
 """
-
-# Further information of Python libraries
-# Because this one is used for API calls, it's already using PIL.Image with its API call.
-# Thus, there's no need to manually construct Image class here.
-# Furthermore, this API call should only use Qiskit only, rather than Micromoth.
-# All Python requirements will be hosted in AWS instance. 
-
 
 import math
 import random
 
-# determine whether qiskit can be used, or whether to default to
-# MicrMoth and the standard library
-try:
-    from qiskit import QuantumCircuit, quantum_info
-    from qiskit_aer import AerSimulator
-    from qiskit_aer.library import SaveStatevectorDict
-    simple_python = False
-except:
-    print('Unable to import Qiskit, so MicroMoth will be used instead')
-    from micromoth import QuantumCircuit, simulate
-    simple_python = True
+from qiskit import QuantumCircuit, quantum_info
+from qiskit_aer import AerSimulator
+from qiskit_aer.library import SaveStatevectorDict
 
-    
-# this is overwritten by the PIL class if available
-class Image():
-    """
-    A minimal reimplementation of the the PIL Image.Image class, to allow all
-    image based tools to function even when only the standard library is
-    available.
-    
-    To initialize an Image oject, use the `newimage` function.
-    
-    Attributes:
-        mode (str): If L, pixel values are a single integer. If 'RGB', they
-            are a tuple of three integers.
-        size (tuple): Specifies width and height.
-    """
-    def __init__(self):
-        self.mode = None
-        self.size = None
-        self._image_dict = None
-    def getpixel(self,xy):
-        """
-        Returns pixel value at the given coordinate.
-        """
-        return self._image_dict[xy]
-    def putpixel(self, xy, value):
-        """
-        Sets the pixel value at the given coordinate.
-        """
-        self._image_dict[xy] = value
-    def todict(self):
-        """
-        Returns dictionary of pixel values with coordinates as keys.
-        Not present in PIL version.
-        """
-        return self._image_dict
-    def show(self):
-        """
-        If the PIL version of this class is used, this function creates a PNG
-        image and displays it. This version instead simply prints all
-        coordinates and pixel values.
-        """
-        for x in range(self.size[0]):
-            for y in range(self.size[1]):
-                print('('+str(x)+','+str(y)+')'+': '+str(self._image_dict[x,y]))
-    def resize(self, new_size, method):
-        print("This functionality has not been implemented.")
-
-# this is overwritten by the PIL function if available               
-def newimage(mode, size):
-    """
-    A minimal reimplementation of the the PIL Image.new function.
-    Creates an Image object for the given mode and size.
-    """
-    img = Image()
-    img.mode = mode
-    img.size = size
-    if mode=='L':
-        blank = 0
-    elif mode=='RGB':
-        blank = (0,0,0)
-    img._image_dict = {(x,y):blank\
-                for x in range(size[0])\
-                for y in range(size[1])}
-    return img
-
-# if external libraries can be used, import the ones we need
-if not simple_python:
-    import numpy as np
-    from scipy.linalg import fractional_matrix_power
-    from PIL.Image import new as newimage, Image
+import numpy as np
+from scipy.linalg import fractional_matrix_power
+from PIL.Image import new as newimage, Image
 
 
 def _kron(vec0,vec1):
@@ -163,15 +60,12 @@ def circuit2probs(qc):
     """
     Runs the given circuit, and returns the resulting probabilities.
     """
-    if simple_python:
-        probs = simulate(qc,get='probabilities_dict')
-    else:
-        qc_run = qc.copy()
-        qc_run.append(SaveStatevectorDict(qc.num_qubits),qc.qregs[0])
-        rawamps = AerSimulator().run(qc_run,shots=1).result().data()['statevector_dict']
-        probs = {}
-        for string, amp in rawamps.items():
-            probs[str(bin(int(string,16))[2::].zfill(qc.num_qubits))] = np.abs(amp)**2
+    qc_run = qc.copy()
+    qc_run.append(SaveStatevectorDict(qc.num_qubits),qc.qregs[0])
+    rawamps = AerSimulator().run(qc_run,shots=1).result().data()['statevector_dict']
+    probs = {}
+    for string, amp in rawamps.items():
+        probs[str(bin(int(string,16))[2::].zfill(qc.num_qubits))] = np.abs(amp)**2
     
     return probs
 
@@ -398,11 +292,7 @@ def height2circuit(height, log=False, eps=1e-2, grid=None):
         
     # define and initialize quantum circuit            
     qc = QuantumCircuit(n)
-    if simple_python:
-        # micromoth style
-        qc.initialize(state)
-    else:
-        qc.initialize(state, range(n))
+    qc.initialize(state, range(n))
     qc.name = '('+str(Lx)+','+str(Ly)+')'
 
     return qc
@@ -509,12 +399,8 @@ def combine_circuits(qc0,qc1):
     kets = [None,None]
     for j,qc in enumerate([qc0, qc1]):
         for gate in qc.data:
-            if simple_python:
-                assert gate[0]=='init', warning
-                kets[j] = gate[1]
-            else:
-                assert gate[0].name=='initialize', warning
-                kets[j] = gate[0].params
+            assert gate[0].name=='initialize', warning
+            kets[j] = gate[0].params
 
     # combine into a statevector for all the qubits
     ket = None
@@ -527,10 +413,7 @@ def combine_circuits(qc0,qc1):
 
     # use this to initialize
     if ket:
-        if simple_python:
-            combined_qc.initialize(ket)
-        else:
-            combined_qc.initialize(ket,range(num_qubits))
+        combined_qc.initialize(ket,range(num_qubits))
     
     # prevent circuit name from being used for size determination
     combined_qc.name = 'None'
@@ -545,24 +428,18 @@ def partialswap(combined_qc, fraction):
     """
     num_qubits = int(combined_qc.num_qubits/2)
     
-    if not simple_python:
-        U = np.array([
-        [1, 0, 0, 0],
-        [0, 0, 1, 0],
-        [0, 1, 0, 0],
-        [0, 0, 0, 1]
-        ])
-        U = fractional_matrix_power(U,fraction)
+    U = np.array([
+    [1, 0, 0, 0],
+    [0, 0, 1, 0],
+    [0, 1, 0, 0],
+    [0, 0, 0, 1]
+    ])
+    U = fractional_matrix_power(U,fraction)
     for q in range(num_qubits):
         q0 = q
         q1 = num_qubits + q
-        if not simple_python:
-            combined_qc.unitary(U, [q0,q1],\
-                                 label='partial_swap')
-        else:
-            combined_qc.cx(q1,q0)
-            combined_qc.crx(math.pi*fraction,q0,q1)
-            combined_qc.cx(q1,q0)  
+        combined_qc.unitary(U, [q0,q1],\
+                             label='partial_swap')
 
             
 def probs2marginals(combined_qc, probs):
@@ -836,15 +713,9 @@ def blur_height(height, xi, axis='x', circuit=None, log=False, grid=None):
             
     # add to initial circuit
     if circuit:
-        if simple_python:
-            circuit = circuit + qc_rot
-        else:
-            circuit = circuit.compose(qc_rot)
+        circuit = circuit.compose(qc_rot)
     else:
-        if simple_python:
-            circuit = height2circuit(height,log=log) + qc_rot
-        else:
-            circuit = circuit = height2circuit(height,log=log).compose(qc_rot)
+        circuit = height2circuit(height,log=log).compose(qc_rot)
 
     circuit.name = '('+str(Lx)+','+str(Ly)+')'
         
@@ -1036,10 +907,7 @@ def dotdot(L,diamond=0,delta=0,depth=0):
 
     # extend at top
     qc.rx(math.pi+dt(),1)
-    if simple_python:
-        qc.crx(math.pi/2,1,nr+2)
-    else:
-        qc.ch(1,nr+2)
+    qc.ch(1,nr+2)
     qc.x(1)
 
     # cover with cz gates to entangle everything
@@ -1051,11 +919,6 @@ def dotdot(L,diamond=0,delta=0,depth=0):
             for j in range(n):
                 qc.rx(dt(),j)
             for c,t in r1+r2:
-                if simple_python:
-                    qc.h(t)
-                    qc.cx(c,t)
-                    qc.h(t)
-                else:
-                    qc.cz(c,t)
+                qc.cz(c,t)
 
     return qc, line
