@@ -120,6 +120,7 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
     resultImg.save(buffer, format=imgForm)
     output = buffer.getvalue()
     logger.debug("Output size: %d bytes", len(output))
+
     _fire() # step 8: encoded!
 
     # Return the required output for API.
@@ -183,11 +184,15 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
     else:
         img2 = img2.convert("RGB")
 
+    # Remember original dimensions before power-of-2 resize
+    original_w = max(img1.width, img2.width)
+    original_h = max(img1.height, img2.height)
+
     # Resize both to matching power-of-2 dimensions so that:
     # 1. Equal widths -> teleportation boundary aligns with the image boundary
     # 2. Power-of-2 -> int(np.log2()) gives the correct qubit (matches notebook)
-    target_w = _to_pow2(max(img1.width, img2.width)) # This must be less than 1024px (current API)
-    target_h = _to_pow2(max(img1.height, img2.height)) # This must be less than 1024px (current API)
+    target_w = _to_pow2(original_w) # This must be less than 1024px (current API)
+    target_h = _to_pow2(original_h) # This must be less than 1024px (current API)
     # It's already filtered on the API side: MAX_WIDTH 512 (Half of 1024) so it should be fine.
     img1 = img1.resize((target_w, target_h), Image.LANCZOS)
     img2 = img2.resize((target_w, target_h), Image.LANCZOS)
@@ -225,7 +230,11 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
 
         img = circuits2image(qcs)
         # Crop left half — the teleported result at (target_w, target_h)
-        frames.append(img.crop((0, 0, target_w, target_h)))
+        frame = img.crop((0, 0, target_w, target_h))
+        # Resize back to original dimensions to preserve aspect ratio
+        if (original_w, original_h) != (target_w, target_h):
+            frame = frame.resize((original_w, original_h), Image.LANCZOS)
+        frames.append(frame)
         logger.debug("Frame %d/%d (fraction=%.3f)", f + 1, num_frames, fraction)
 
         _fire()  # frame rendered
