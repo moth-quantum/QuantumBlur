@@ -4,6 +4,8 @@ from io import BytesIO
 import logging
 import numpy as np
 
+import math
+
 logger = logging.getLogger(__name__)
 
 """
@@ -37,7 +39,7 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
             8-9 - alpha channel blur (RGBA only)
             10  - output encoded
     """
-    
+
     step, total = 0, 8
 
     def _fire():
@@ -70,9 +72,9 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
         logger.info("Building blur circuits (whole image, strength=%.2f)", blurStrength)
         blur_circuits = blur_image(prevImg, blurStrength,
                                    callback=lambda c, t: _fire())
-        
+
         logger.debug("Built %d blur circuits", len(blur_circuits))
-        
+
     elif (style == 'partial'): # c.f. Dealing with the selected region.
         # *** Dummy file ***
         region = imgCoor
@@ -118,8 +120,7 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
     resultImg.save(buffer, format=imgForm)
     output = buffer.getvalue()
     logger.debug("Output size: %d bytes", len(output))
-    
-    _fire() # step 8: encoded!
+    _fire() # step 8: encoded!
 
     # Return the required output for API.
     return {
@@ -129,7 +130,7 @@ def run(blurStyle, blurStrength, imgForm, imgData, imgCoor, callback=None):
 
 def _to_pow2(n):
     """Round up to the nearest power of 2."""
-    return 1 << (n - 1).bit_length() # Bitshift operation for faster calculation
+    return 1 << (n - 1).bit_length() # Bitshift operation for faster calculation
 
 
 def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
@@ -144,7 +145,7 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
     Callback signature
         callback(current_step: int, total_steps: int) -> None
 
-        Steps (num_frames + 2 total): # e.g. 22
+        Steps (num_frames + 2 total): # e.g. 22
             1. images loaded and combined
             2. frames rendered on quantum circuit
             3. output encoded
@@ -185,12 +186,12 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
     # Resize both to matching power-of-2 dimensions so that:
     # 1. Equal widths -> teleportation boundary aligns with the image boundary
     # 2. Power-of-2 -> int(np.log2()) gives the correct qubit (matches notebook)
-    target_w = _to_pow2(max(img1.width, img2.width)) # This must be less than 1024px (current API)
-    target_h = _to_pow2(max(img1.height, img2.height)) # This must be less than 1024px (current API)
-    # It's already filtered on the API side: MAX_WIDTH 512 (Half of 1024) so it should be fine.
+    target_w = _to_pow2(max(img1.width, img2.width)) # This must be less than 1024px (current API)
+    target_h = _to_pow2(max(img1.height, img2.height)) # This must be less than 1024px (current API)
+    # It's already filtered on the API side: MAX_WIDTH 512 (Half of 1024) so it should be fine.
     img1 = img1.resize((target_w, target_h), Image.LANCZOS)
     img2 = img2.resize((target_w, target_h), Image.LANCZOS)
-    img2 = img2.transpose(Image.FLIP_LEFT_RIGHT) # flip so that effect unflips
+    img2 = img2.transpose(Image.FLIP_LEFT_RIGHT) # flip so that effect unflips
     logger.debug("Resized to power-of-2: %dx%d", target_w, target_h)
 
     # Combine side-by-side — canvas is (2 * target_w, target_h), both powers of 2
@@ -223,8 +224,7 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
                 qc.rx(theta, q)
 
         img = circuits2image(qcs)
-        # Crop left half
-        # the teleported result at (target_w, target_h)
+        # Crop left half — the teleported result at (target_w, target_h)
         frames.append(img.crop((0, 0, target_w, target_h)))
         logger.debug("Frame %d/%d (fraction=%.3f)", f + 1, num_frames, fraction)
 
@@ -247,4 +247,5 @@ def teleport(img1Data, img2Data, num_frames=20, duration=120, callback=None):
 
     return {
         "output": output,
+        "content_type": "image/gif",
     }
