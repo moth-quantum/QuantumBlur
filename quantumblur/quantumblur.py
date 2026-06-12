@@ -208,7 +208,7 @@ def heights2image(heights, rescale = None):
         for y in range(Ly):
             rgb = []
             for j,height in enumerate(heights):
-                if (x,y) in height:
+                if (x,y) in height and h_max[j]!=0:
                     h = rescale[j]*float(height[x,y])/h_max[j]
                 else:
                     h = 0
