@@ -1,58 +1,59 @@
 ﻿namespace QuantumBlur;
 
-internal class Image
+internal enum ImageType
 {
-    /// <summary>
-    /// A minimal reimplementation of the PIL Image.Image class, optimised for C#, to allow all image-based tools to function even when only the standard library is available.
-    /// To initialise an Image object, use the 'newImage' function that is defined within QuantumBlur.
-    /// - mode (string): If L, pixel values are a single integer. If 'RGB', they are a tuple of three integers.
-    /// - size (tuple): Specifies width and height.
-    /// </summary>
+    L, // Pixel values are a single integer. 
+    Rgb, // A tuple of three integers.
+}
 
-    internal string mode;
-    internal (double width, double height) size;
-    // (x, y) as a coordinate,
-    // (r, g, b) as a pixel value.
-    internal Dictionary<(int xloc, int yloc), (int red, int green, int blue)> image_dict;
+internal sealed class Image
+{
     
-    internal Image()
+    private readonly (int R, int G, int B)[] _pixels;
+
+    public ImageType Mode;
+    public int Width { get; }
+    public int Height { get; }
+    public (int Width, int Height) Size => (Width, Height);
+    
+    public Image(ImageType mode, int width, int height)
     {
-        // Make the instance first
-        // Again, use createImage() in QuantumBlur.
+        if (width <= 0 || height <= 0) throw new ArgumentOutOfRangeException("The width or height of the image must be bigger than at least 1 pixel.");
+
+        Mode = mode;
+        Width = width;
+        Height = height;
+        _pixels = new (int, int, int)[width * height]; // Fill up each pixel in the certain size of image black.
     }
 
-    public (int, int, int) getPixel(int x, int y)
-    {
-        // Returns the pixel value at the given coordinate.
-        return image_dict[(x, y)];
-    }
+    public (int R, int G, int B) GetPixel(int x, int y) => _pixels[Index(x, y)];
 
-    public void setPixel(int x, int y, (int, int, int) value)
-    {
-        image_dict[(x, y)] = value;
-    }
+    public int GetPixelL(int x, int y) => _pixels[Index(x, y)].R; // technically it's not the 'R' value, but to indicate the single-channel value.
 
-    public Dictionary<(int, int), (int, int, int)> getDictValue()
-    {
-        // Returns dictionary of pixel values with coordinates as keys. Not present in PIL.
-        return image_dict;
-    }
+    public void SetPixel(int x, int y, (int R, int G, int B) value) => _pixels[Index(x, y)] = value;
 
-    public void show()
+    public void SetPixel(int x, int y, int value) => _pixels[Index(x, y)] = (value, value, value); // to indicate the one value within one pixel during the L mode.
+
+    // Prints all coordinates and pixel values to replace PIL's image display.
+    public void Show()
     {
-        /// Simply prints all coordinates and pixel values,
-        /// rather than PIL, that creates a PNG file and displays it.
-        for (int x = 0; x < size.width; x++)
+        for (int x = 0; x < Width; x++)
         {
-            for (int y = 0; y < size.height; y++)
+            for (int y = 0; y < Height; y++)
             {
-                Console.WriteLine();
+                Console.WriteLine(Mode == ImageType.L ? 
+                $"({x}, {y}): {GetPixelL(x, y)}" :
+                $"({x}, {y}): {GetPixel(x, y)}");
             }
         }
     }
 
-    public void resize()
+    public Image Resize((int NewWidth, int NewHeight) newSize) => throw new NotImplementedException();
+
+    private int Index(int x, int y)
     {
-        Console.WriteLine("This funcionality has not been implemented.");
+        if (x < 0 || x >= Width) throw new ArgumentOutOfRangeException(nameof(x));
+        if (y < 0 || y >= Height) throw new ArgumentOutOfRangeException(nameof(y));
+        return y * Width + x;
     }
 }

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("QuantumBlur")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7dcd8d47a37d3214c72da99b50e2028397ac1794")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb555d83933ba0552c59fb3ccf803f93293646e5")]
 [assembly: System.Reflection.AssemblyProductAttribute("QuantumBlur")]
 [assembly: System.Reflection.AssemblyTitleAttribute("QuantumBlur")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

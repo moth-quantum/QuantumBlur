@@ -1,0 +1,13 @@
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.csproj.AssemblyReference.cache
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.GeneratedMSBuildEditorConfig.editorconfig
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.AssemblyInfoInputs.cache
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.AssemblyInfo.cs
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.csproj.CoreCompileInputs.cache
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.sourcelink.json
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/bin/Debug/net10.0/QuantumBlur.deps.json
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/bin/Debug/net10.0/QuantumBlur.dll
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/bin/Debug/net10.0/QuantumBlur.pdb
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.dll
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/refint/QuantumBlur.dll
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/QuantumBlur.pdb
+/Users/astrydpark/work/GitHub/QuantumBlur/QuantumBlur/obj/Debug/net10.0/ref/QuantumBlur.dll
