@@ -1,6 +1,5 @@
 ﻿namespace QuantumBlur;
-
-internal enum ImageType
+internal enum ImageType // This makes the mode selection more robust, like we've done in MicroMoth for Arduino.
 {
     L, // Pixel values are a single integer. 
     Rgb, // A tuple of three integers.
@@ -28,7 +27,7 @@ internal sealed class Image
 
     public (int R, int G, int B) GetPixel(int x, int y) => _pixels[Index(x, y)];
 
-    public int GetPixelL(int x, int y) => _pixels[Index(x, y)].R; // technically it's not the 'R' value, but to indicate the single-channel value.
+    public int GetPixelL(int x, int y) => _pixels[Index(x, y)].R; // technically it's not the 'R' value, but to indicate the single-channel value. (limitation of transition from Python to C#.)
 
     public void SetPixel(int x, int y, (int R, int G, int B) value) => _pixels[Index(x, y)] = value;
 

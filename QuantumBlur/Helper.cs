@@ -1,8 +1,6 @@
 namespace QuantumBlur;
 using System.Numerics;
 
-using Moth.MicroMoth;
-
 internal static class Helper
 {
     // <summary> Tensor product of two state vectors. </summary>
