@@ -50,11 +50,11 @@ public static class Codec
         for (int j = 0; j < statevector.Length; j++) amplitudes[j] = statevector[j];
 
         QuantumCircuit qc = new QuantumCircuit(n).Init(amplitudes);
-        qc.Name = $"({lx}, {ly})";
+        qc.Name = $"({lx},{ly})";
 
         return qc;
     }
-    public static Dictionary<string, double> CircuitToProbs(QuantumCircuit qc) => Simulator.Probabilities(qc);
+    public static Dictionary<string, double> CircuitToProb(QuantumCircuit qc) => Simulator.Probabilities(qc);
     // Moth.MicroMoth's Statevector.Probabilities will return Dictionary<string, double>.
     public static HeightMap ProbToHeight(Dictionary<string, double> prob, (int Lx, int Ly)? size = null, bool log = false, Grid? grid = null)
     {
@@ -94,6 +94,7 @@ public static class Codec
                 }
             }
         }
+        return heightmap;
     }
     public static HeightMap CircuitToHeight(QuantumCircuit qc, bool log = false, Grid? grid = null)
     {

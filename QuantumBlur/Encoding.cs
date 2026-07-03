@@ -10,6 +10,7 @@ public sealed record Grid(IReadOnlyDictionary<string, (int X, int Y)> EncodedIma
 /// <summary>
 /// Gray-code encodings of lines and grids
 /// Python: make_line, make_grid, make_strip
+/// </summary>
 public static class Encoding
 {
     public static List<string> MakeLine(int length)
@@ -22,7 +23,7 @@ public static class Encoding
         var line = new List<string> { "0", "1" };
         for (int j = 1; j < n; j++)
         {
-            int half = line.Count; // 1
+            int half = line.Count;
             for (int k = half - 1; k >= 0; k--) line.Add(line[k]);
             for (int k = 0; k < half; k++) line[k] += "0"; // front half
             for (int k = half; k < line.Count; k++) line[k] += "1"; // botton half
