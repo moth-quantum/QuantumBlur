@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- <PackageReference Include="Moth.MicroMoth" Version="1.0.1" /> -->
-    <ProjectReference Include="../../MicroMoth/versions/Csharp/MicroMoth/MicroMoth.csproj" /> <!--This is for the local debugging purpose-->
+    <PackageReference Include="Moth.MicroMoth" Version="1.1.0" />
+    <!-- <ProjectReference Include="../../MicroMoth/versions/Csharp/MicroMoth/MicroMoth.csproj" /> --> <!--This is for the local debugging purpose-->
   </ItemGroup>
 
 </Project>

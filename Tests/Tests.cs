@@ -89,5 +89,88 @@ bool Approx(double a, double b, double tol = 1e-9) => Math.Abs(a - b) < tol;
     Check("log mode, single bright pixel: no crash, bright pixel = 1", Approx(back[(1, 1)], 1.0, 1e-6));
 }
 
+// 7. Blur with xi = 0 is the identity: the rotation circuit does nothing,
+//    so the round trip must match the unblurred one exactly.
+{
+    var height = new HeightMap();
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            height[(x, y)] = x + 4 * y;
+
+    var back = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.0));
+    bool ok = true;
+    for (int x = 0; x < 4 && ok; x++)
+        for (int y = 0; y < 4 && ok; y++)
+            ok = Approx(back[(x, y)], (x + 4 * y) / 15.0, 1e-6);
+    Check("blur xi=0: identity round trip", ok);
+}
+
+// 8. Blur spreads brightness to spatial neighbours: a single bright pixel
+//    must leak into its adjacent pixels, stay the maximum itself, and leave
+//    the far corner darker than the direct neighbours. This is the physics
+//    the Gray-code layout exists for.
+{
+    var height = new HeightMap();
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            height[(x, y)] = 0;
+    height[(0, 0)] = 1;
+
+    var back = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.2));
+    Check("blur spreads: neighbours lit, source still max, far corner darkest",
+        Approx(back[(0, 0)], 1.0, 1e-6)
+        && back[(1, 0)] > 0.01 && back[(0, 1)] > 0.01
+        && back[(3, 3)] < back[(1, 0)] && back[(3, 3)] < back[(0, 1)]);
+}
+
+// 9. More xi, more blur: the neighbour of the bright pixel must be brighter
+//    at xi = 0.4 than at xi = 0.1.
+{
+    var height = new HeightMap();
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            height[(x, y)] = 0;
+    height[(0, 0)] = 1;
+
+    var soft = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.1));
+    var hard = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.4));
+    Check("blur strength: xi=0.4 leaks more than xi=0.1", hard[(1, 0)] > soft[(1, 0)]);
+}
+
+// 10. All-black blur: rates are all zero, the max_rate guard must kick in
+//     (uniform rotation) instead of dividing by zero. Decode stays finite.
+{
+    var height = new HeightMap { [(0, 0)] = 0, [(1, 0)] = 0, [(0, 1)] = 0, [(1, 1)] = 0 };
+    var back = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.3));
+    bool ok = back.Count == 4;
+    foreach (var h in back.Values) ok &= double.IsFinite(h);
+    Check("all-black blur: max_rate guard, finite decode", ok);
+}
+
+// 11. Non-power-of-two blur keeps its size: Compose takes the name from the
+//     left operand and BlurHeight re-stamps it, so a blurred 3x5 must decode
+//     as 3x5, not fall back to the square guess.
+{
+    var height = new HeightMap();
+    for (int x = 0; x < 3; x++)
+        for (int y = 0; y < 5; y++)
+            height[(x, y)] = 1 + x + 3 * y;
+
+    var back = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.15));
+    Check("3x5 blur: still decodes as 15 pixels", back.Count == 15 && back.ContainsKey((2, 4)));
+}
+
+// 12. Ry axis: same machinery, different rotation. Must run and still spread.
+{
+    var height = new HeightMap();
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            height[(x, y)] = 0;
+    height[(0, 0)] = 1;
+
+    var back = Codec.CircuitToHeight(Effect.BlurHeight(height, 0.2, Where.RotationY));
+    Check("blur axis=Y: runs and spreads", back[(1, 0)] > 0.01 && back[(0, 1)] > 0.01);
+}
+
 Console.WriteLine(failures == 0 ? "\nAll codec tests passed." : $"\n{failures} test(s) FAILED.");
 return failures == 0 ? 0 : 1;
