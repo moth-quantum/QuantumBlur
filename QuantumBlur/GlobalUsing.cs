@@ -1,0 +1,1 @@
+global using HeightMap = System.Collections.Generic.Dictionary<(int X, int Y), double>;

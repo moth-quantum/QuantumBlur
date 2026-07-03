@@ -46,6 +46,6 @@ public static class Encoding
         }
 
         return new Grid(encoded, lineX[0].Length + lineY[0].Length);
-        // Return the encoded image as a customised grid data structure with its width and height
+        // Return the encoded image as a customised grid data structure with its width and height!
     }
 }
