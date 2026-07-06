@@ -1,4 +1,14 @@
-﻿namespace QuantumBlur;
+﻿/// <summary>
+/// Welcome to Quantum Blur's C# version! This is the first class that you should keep in mind.
+/// This Image class replaces PIL.Image's Image(), that stores encoded image data as 2D pixels.
+/// For Quantum Blur, it's important to separate pixel data as RGB(A), as a format of dictionary
+/// which keys follow (x,y) format.
+/// 
+/// Based on the image type that you want to encode, it supports either bitmap images or RGB(A)
+/// images. 
+/// </summary>
+
+namespace QuantumBlur;
 internal enum ImageType // This makes the mode selection more robust, like we've done in MicroMoth for Arduino.
 {
     L, // Pixel values are a single integer. 
