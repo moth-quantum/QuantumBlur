@@ -1,5 +1,5 @@
-using QuantumBlur;
 using Moth.MicroMoth;
+namespace QuantumBlur;
 
 /// <summary>
 /// Which single-qubit rotation that Quantum Blur will use?
@@ -14,7 +14,7 @@ public enum Where
 /// <summary>
 /// Quantum effects applied on top of encoded image (height maps)
 /// </summary>
-public class Effect
+public static class Effect
 {
     public static QuantumCircuit BlurHeight(HeightMap heightmap, double xi, Where axis = Where.RotationX, QuantumCircuit? circuit = null, bool log = false, Grid? grid = null)
     {
