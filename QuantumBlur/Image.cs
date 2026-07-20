@@ -9,13 +9,13 @@
 /// </summary>
 
 namespace QuantumBlur;
-internal enum ImageType // This makes the mode selection more robust, like we've done in MicroMoth for Arduino.
+public enum ImageType // This makes the mode selection more robust, like we've done in MicroMoth for Arduino.
 {
     L, // Pixel values are a single integer. 
     Rgb, // A tuple of three integers.
 }
 
-internal sealed class Image
+public sealed class Image
 {
     
     private readonly (int R, int G, int B)[] _pixels;

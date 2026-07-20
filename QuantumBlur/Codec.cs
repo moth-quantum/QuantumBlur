@@ -9,6 +9,12 @@ using System.Numerics;
 
 public static class Codec
 {
+    private static int ToByte(HeightMap height, (int X, int Y) pos)
+    {
+        double h = height.TryGetValue(pos, out double v) ? v : 0;
+        return Math.Clamp((int)Math.Round(h), 0, 255);
+    }
+
     public static QuantumCircuit HeightToCircuit(HeightMap height, bool log = false, double eps = 1e-2, Grid? grid = null) {
         var (lx, ly) = Helper.GetSize(height); // returns (int, int)
         grid ??= Encoding.MakeGrid(lx, ly);
@@ -101,5 +107,58 @@ public static class Codec
         var prob = CircuitToProb(qc);
         var size = Helper.Eval(qc.Name) ?? Helper.MakeSquare(prob);
         return ProbToHeight(prob, size, log, grid);
+    }
+
+    /// <summary>
+    /// One heightmap per colour channel. (0-255) vs L mode is for a single heightmap.
+    /// This function does not change the brightness.
+    /// </summary>
+    public static HeightMap[] ImageToHeight(Image img)
+    {
+        var (lx, ly) = img.Size;
+        int channels = img.Mode == ImageType.L ? 1 : 3;
+        var height = new HeightMap[channels];
+        for (int j = 0; j < channels; j++) height[j] = new HeightMap(lx * ly);
+
+        for (int x = 0; x < lx; x++)
+        {
+            for (int y = 0; y < ly; y++)
+            {
+                if (img.Mode == ImageType.L) height[0][(x, y)] = img.GetPixelL(x, y);
+                else
+                {
+                    var (r, g, b) = img.GetPixel(x, y);
+                    height[0][(x, y)] = r;
+                    height[1][(x, y)] = g;
+                    height[2][(x, y)] = b;
+                }
+            }
+        }
+
+        return height;
+    }
+
+    /// <summary>
+    /// Constructs an image from the height map.
+    /// The values will be rounded to the pixel values between 0-255. (RGB mode)
+    /// This function does not change the brightness.
+    /// </summary>
+    public static Image HeightToImage(HeightMap[] height)
+    {
+        if (height.Length != 1 && height.Length != 3) throw new ArgumentException("Expected 1 (L mode) or 3 (RGB mode) height maps. Currently:", nameof(height));
+
+        var (lx, ly) = Helper.GetSize(height[0]);
+        var img = new Image(height.Length == 1 ? ImageType.L : ImageType.Rgb, lx, ly);
+
+        for (int x = 0; x < lx; x++)
+        {
+            for (int y = 0; y < ly; y++)
+            {
+                if (height.Length == 1) img.SetPixel(x, y, ToByte(height[0], (x, y)));
+                else img.SetPixel(x, y, (ToByte(height[0], (x, y)), ToByte(height[1], (x, y), ToByte(height[2], (x, y)))));
+            }
+        }
+        
+        return img; // return the constructed image back to the canvas
     }
 }
