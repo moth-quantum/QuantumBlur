@@ -155,7 +155,7 @@ public static class Codec
             for (int y = 0; y < ly; y++)
             {
                 if (height.Length == 1) img.SetPixel(x, y, ToByte(height[0], (x, y)));
-                else img.SetPixel(x, y, (ToByte(height[0], (x, y)), ToByte(height[1], (x, y), ToByte(height[2], (x, y)))));
+                else img.SetPixel(x, y, (ToByte(height[0], (x, y)), ToByte(height[1], (x, y)), ToByte(height[2], (x, y))));
             }
         }
         

@@ -68,4 +68,34 @@ public static class Effect
         blurred.Name = $"({lx},{ly})";
         return blurred;
     }
+
+    /// <summary>
+    /// The easiest way of using Quantum Blur!
+    /// </summary>
+    public static Image BlurImage(Image img, double xi, Where axis = Where.RotationX, bool log = false)
+    {
+        var height = Codec.ImageToHeight(img);
+        var (lx, ly) = img.Size;
+        var grid = Encoding.MakeGrid(lx, ly);
+
+        for (int j = 0; j < height.Length; j++)
+        {
+            // A unit-norm quantum state cannot remember absolute brightness,
+            // so the decoded height map always comes back with max 1.
+            // Save the channel's true maximum and restore it.
+            double maxH = 0;
+            foreach (var h in height[j].Values) maxH = Math.Max(maxH, h);
+
+            // An all-zero channel has nothing to blur (all-black image)
+            // In this case, skip the entire pipeline.
+            // But who would try to blur all-black image?!
+            if (maxH == 0) continue;
+
+            var blurred = Codec.CircuitToHeight(BlurHeight(height[j], xi, axis, log: log, grid: grid), log: log, grid: grid);
+            foreach (var pos in blurred.Keys) blurred[pos] *= maxH;
+            height[j] = blurred;
+        }
+
+        return Codec.HeightToImage(height);
+    }
 }

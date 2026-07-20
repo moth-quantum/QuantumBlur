@@ -172,5 +172,85 @@ bool Approx(double a, double b, double tol = 1e-9) => Math.Abs(a - b) < tol;
     Check("blur axis=Y: runs and spreads", back[(1, 0)] > 0.01 && back[(0, 1)] > 0.01);
 }
 
+// 13. Image <-> heights conversion is lossless: no quantum involved, so
+//     converting to heightmaps and straight back must change nothing.
+{
+    var img = new Image(ImageType.Rgb, 3, 2);
+    img.SetPixel(0, 0, (10, 200, 30)); img.SetPixel(1, 0, (0, 0, 0)); img.SetPixel(2, 0, (255, 255, 255));
+    img.SetPixel(0, 1, (60, 61, 62));  img.SetPixel(1, 1, (128, 0, 5)); img.SetPixel(2, 1, (1, 2, 3));
+
+    var back = Codec.HeightToImage(Codec.ImageToHeight(img));
+    bool ok = back.Mode == ImageType.Rgb && back.Size == img.Size;
+    for (int x = 0; x < 3 && ok; x++)
+        for (int y = 0; y < 2 && ok; y++)
+            ok = back.GetPixel(x, y) == img.GetPixel(x, y);
+    Check("image <-> heights: lossless round trip", ok);
+}
+
+// 14. BlurImage with xi = 0 returns the original image pixel-for-pixel.
+//     This is the proof of the original-max restore: the reference would
+//     stretch this dark image to full brightness even at zero blur.
+{
+    var img = new Image(ImageType.Rgb, 4, 4);
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            img.SetPixel(x, y, (10 + x, 20 + y, 5 + x + y)); // dark image, channel maxes 13/23/11
+
+    var back = Effect.BlurImage(img, 0.0);
+    bool ok = true;
+    for (int x = 0; x < 4 && ok; x++)
+        for (int y = 0; y < 4 && ok; y++)
+            ok = back.GetPixel(x, y) == img.GetPixel(x, y);
+    Check("BlurImage xi=0: dark image comes back identical", ok);
+}
+
+// 15. Pure-red sprite stays pure red: the green and blue channels are all
+//     zero, skip the quantum round trip, and must come back exactly zero.
+//     This is the bleaching bug from the reference, fixed.
+{
+    var img = new Image(ImageType.Rgb, 4, 4);
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            img.SetPixel(x, y, (0, 0, 0));
+    img.SetPixel(1, 1, (255, 0, 0));
+
+    var back = Effect.BlurImage(img, 0.3);
+    bool ok = back.GetPixel(1, 1).R == 255 && back.GetPixel(2, 1).R > 0;
+    for (int x = 0; x < 4 && ok; x++)
+        for (int y = 0; y < 4 && ok; y++)
+            ok = back.GetPixel(x, y).G == 0 && back.GetPixel(x, y).B == 0;
+    Check("pure-red sprite: red blurs, green/blue stay exactly zero", ok);
+}
+
+// 16. Dark stays dark: brightness is bounded by the original maximum, never
+//     stretched to 255. The reference fails this on every dark image.
+{
+    var img = new Image(ImageType.Rgb, 4, 4);
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            img.SetPixel(x, y, (x + 4 * y, 0, 0)); // max brightness 15
+
+    var back = Effect.BlurImage(img, 0.25);
+    bool ok = true;
+    for (int x = 0; x < 4 && ok; x++)
+        for (int y = 0; y < 4 && ok; y++)
+            ok = back.GetPixel(x, y).R <= 15;
+    Check("dark image: blurred brightness never exceeds original max", ok);
+}
+
+// 17. L mode: single-channel images go through the same pipeline.
+{
+    var img = new Image(ImageType.L, 4, 4);
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+            img.SetPixel(x, y, 0);
+    img.SetPixel(0, 0, 200);
+
+    var back = Effect.BlurImage(img, 0.2);
+    Check("L mode blur: source stays max, neighbour lit",
+        back.GetPixelL(0, 0) == 200 && back.GetPixelL(1, 0) > 0);
+}
+
 Console.WriteLine(failures == 0 ? "\nAll codec tests passed." : $"\n{failures} test(s) FAILED.");
 return failures == 0 ? 0 : 1;
+
