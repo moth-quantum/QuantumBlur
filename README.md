@@ -1,24 +1,16 @@
 # QuantumBlur
 
-A tool for doing quantum things with height maps and images. All explained in [this blog](https://medium.com/qiskit/introducing-procedural-generation-using-quantum-computation-956e67603d95) and the corresponding [paper](https://arxiv.org/abs/2007.11510).
+The original README, relevant links such as the paper and the blog post and the library description can be all found [here](https://github.com/moth-quantum/QuantumBlur/tree/main).
 
-In this respository is a Python version of the source code, but there is also a [Unity implementation](https://github.com/TigrisCallidus/QuantumBlurUnity/blob/master/README.md).
+This specific branch supports C# implementation of Quantum Blur. Its supplement library is [MicroMoth], that can be found [here](https://github.com/moth-quantum/MicroMoth) as a GitHub repository, and [here](https://www.nuget.org/packages/Moth.MicroMoth) as an official NuGet release. (NET 8.0+) This is not the direct descendent of the old [Unity implementation](https://github.com/TigrisCallidus/QuantumBlurUnity/blob/master/README.md) but built with the totally different purpose. This release does not ship the specific plugin but the library itself, so that people with Unity can download `.dll` and Godot users can natively install the package with `dotnet package add`. Furthermore, this C# implementation uses the C# version of MicroMoth, the world's smallest quantum emulation library, thus the user can expect relatively fast computational result. (approx. 2 seconds for 2048x2048 2D image)
 
 ## Requirements
-
-Either of the following:
-* Python 3.9 and beyond with Qiskit, NumPy, SciPy and PIL.
-* Any Python from 2.7 and beyond, with only the standard library and [MicroMoth](https://github.com/moth-quantum/MicroMoth) (A minimal quantum SDK, previously known as [MicroQiskit](https://github.com/qiskit-community/MicroQiskit));
-
-The former is recommended, but the latter is more flexible to running everything in strange places.
+TBD
 
 ## Installation
 
-You just need the file [quantumblur.py](quantumblur/quantumblur.py) somewhere importable. You can do this with a simple copy/paste, but you can also pip install this repository with the following command.
-```
-pip install git+https://github.com/qiskit-community/QuantumBlur.git
-```
+TBD
 
 ## How to use
 
-See the [quick start guide](QuickStart.ipynb).
+TBD
