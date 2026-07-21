@@ -251,6 +251,51 @@ bool Approx(double a, double b, double tol = 1e-9) => Math.Abs(a - b) < tol;
         back.GetPixelL(0, 0) == 200 && back.GetPixelL(1, 0) > 0);
 }
 
+// 18. Resize to the same size is the identity: at scale 1 the bilinear sample
+//     lands exactly on the source pixel, so nothing changes.
+{
+    var img = new Image(ImageType.Rgb, 5, 3);
+    for (int x = 0; x < 5; x++)
+        for (int y = 0; y < 3; y++)
+            img.SetPixel(x, y, (x * 10, y * 20, x + y));
+    var same = img.Resize((5, 3));
+    bool ok = same.Size == (5, 3);
+    for (int x = 0; x < 5 && ok; x++)
+        for (int y = 0; y < 3 && ok; y++)
+            ok = same.GetPixel(x, y) == img.GetPixel(x, y);
+    Check("resize to same size: identity", ok);
+}
+
+// 19. Resize never invents brightness: bilinear is a weighted average whose
+//     weights sum to 1, so every output channel stays within the source range.
+{
+    var img = new Image(ImageType.Rgb, 8, 8);
+    for (int x = 0; x < 8; x++)
+        for (int y = 0; y < 8; y++)
+            img.SetPixel(x, y, (40 + x, 100 + y, 7)); // R in [40,47], G in [100,107], B = 7
+    var small = img.Resize((3, 3));
+    bool ok = small.Size == (3, 3);
+    for (int x = 0; x < 3 && ok; x++)
+        for (int y = 0; y < 3 && ok; y++)
+        {
+            var (r, g, b) = small.GetPixel(x, y);
+            ok = r >= 40 && r <= 47 && g >= 100 && g <= 107 && b == 7;
+        }
+    Check("resize: output channels stay within source bounds", ok);
+}
+
+// 20. Over-budget BlurImage downscales, blurs, then upscales back: the result
+//     MUST be the original size. A 32x32 image needs 10 qubits, so maxQubits: 8
+//     forces the downscale path. (This is the test that catches the resize-back bug.)
+{
+    var img = new Image(ImageType.Rgb, 32, 32);
+    for (int x = 0; x < 32; x++)
+        for (int y = 0; y < 32; y++)
+            img.SetPixel(x, y, ((x * 8) % 256, (y * 8) % 256, 0));
+    var back = Effect.BlurImage(img, 0.2, maxQubits: 8);
+    Check("BlurImage over budget: result restored to original size", back.Size == (32, 32));
+}
+
 Console.WriteLine(failures == 0 ? "\nAll codec tests passed." : $"\n{failures} test(s) FAILED.");
 return failures == 0 ? 0 : 1;
 

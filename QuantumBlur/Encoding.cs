@@ -11,13 +11,24 @@ public sealed record Grid(IReadOnlyDictionary<string, (int X, int Y)> EncodedIma
 /// Gray-code encodings of lines and grids
 /// Python: make_line, make_grid, make_strip
 /// </summary>
-public static class Encoding
+internal static class Encoding
 {
+    /// <summary>
+    /// Minimise the computational cost
+    /// </summary>
+    public static int Bits(int l)
+    {
+        if (l < 1) throw new ArgumentOutOfRangeException(nameof(l));
+        int n = 1;
+        while ((1 << n) < l) n++;
+        return n;
+    }
     public static List<string> MakeLine(int length)
     {
         if (length < 1) throw new ArgumentOutOfRangeException(nameof(length));
 
-        int n = (int)Math.Ceiling(Math.Log2(length));
+        // int n = (int)Math.Ceiling(Math.Log2(length));
+        int n = Bits(length);
         // Iteratively build the gray code
         // Mirror the current list, then extend the first half with 0 and the mirrored version with 1.
         var line = new List<string> { "0", "1" };

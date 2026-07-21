@@ -57,7 +57,40 @@ public sealed class Image
         }
     }
 
-    public Image Resize((int NewWidth, int NewHeight) newSize) => throw new NotImplementedException();
+    public Image Resize((int NewWidth, int NewHeight) newSize)
+    {
+        var (nw, nh) = newSize;
+        if (nw <= 0 || nh <= 0) throw new ArgumentOutOfRangeException(nameof(newSize));
+        var resized = new Image(Mode, nw, nh);
+
+        double sx = (double)Width / nw, sy = (double)Height / nh;
+        for (int x = 0; x < nw; x++)
+        {
+            for (int y = 0; y < nh; y++)
+            {
+                // Map the centre of the target pixel back into source coordinates.
+                double srcX = (x + 0.5) * sx - 0.5;
+                double srcY = (y + 0.5) * sy - 0.5;
+                
+                int x0 = Math.Clamp((int)Math.Floor(srcX), 0, Width - 1);
+                int y0 = Math.Clamp((int)Math.Floor(srcY), 0, Height - 1);
+                int x1 = Math.Min(x0 + 1, Width - 1);
+                int y1 = Math.Min(y0 + 1, Height - 1);
+                
+                double fx = Math.Clamp(srcX - x0, 0, 1), fy = Math.Clamp(srcY - y0, 0, 1);
+
+                var p00 = GetPixel(x0, y0); var p10 = GetPixel(x1, y0);
+                var p01 = GetPixel(x0, y1); var p11 = GetPixel(x1, y1);
+
+                // Define the local function to mix the pixel values altogether (2x2)
+                int Blend(int c00, int c10, int c01, int c11) => (int)Math.Round((1 - fx) * (1 - fy) * c00 + fx * (1- fy) * c10 + (1 - fx) * fy * c01 + fx * fy * c11);
+                resized.SetPixel(x, y, (Blend(p00.R, p10.R, p01.R, p11.R), Blend(p00.G, p10.G, p01.G, p11.G), Blend(p00.B, p10.B, p01.B, p11.B)));
+
+            }
+        }
+
+        return resized;
+    }
 
     private int Index(int x, int y)
     {

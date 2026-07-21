@@ -72,8 +72,14 @@ public static class Effect
     /// <summary>
     /// The easiest way of using Quantum Blur!
     /// </summary>
-    public static Image BlurImage(Image img, double xi, Where axis = Where.RotationX, bool log = false)
+    public static Image BlurImage(Image img, double xi, Where axis = Where.RotationX, bool log = false, int maxQubits = 20)
     {
+        // If the image is too big (the ones require more than 20 qubits)
+        // resize the image (downscale -> process -> rescale to original)
+        var (oldW, oldH) = img.Size;
+        bool isBig = Encoding.Bits(oldW) + Encoding.Bits(oldH) > maxQubits;
+        if (isBig) img = img.Resize(Downscale(oldW, oldH, maxQubits));
+
         var height = Codec.ImageToHeight(img);
         var (lx, ly) = img.Size;
         var grid = Encoding.MakeGrid(lx, ly);
@@ -95,7 +101,26 @@ public static class Effect
             foreach (var pos in blurred.Keys) blurred[pos] *= maxH;
             height[j] = blurred;
         }
+        
+        var result = Codec.HeightToImage(height);
+        return isBig ? result.Resize((oldW, oldH)) : result;
+    }
 
-        return Codec.HeightToImage(height);
+    // implementation of the blur-api's _downscaled_size
+    private static (int, int) Downscale(int w, int h, int maxQubits)
+    {
+        if (maxQubits < 2) throw new ArgumentOutOfRangeException(nameof(maxQubits), "An image needs at least one qubit per axis.");
+
+        double spare = maxQubits - (Math.Log(w) + Math.Log(h)) / Math.Log(2);
+        double scale = Math.Min(1.0, Math.Pow(2, spare / 2));
+        int nw = Math.Max(1, (int)(w * scale)), nh = Math.Max(1, (int)(h * scale));
+
+        while (Encoding.Bits(nw) + Encoding.Bits(nh) > maxQubits)
+        {
+            if (Encoding.Bits(nw) >= Encoding.Bits(nh)) nw = Math.Max(1, nw / 2);
+            else nh = Math.Max(1, nh / 2);
+        }
+
+        return (nw, nh);
     }
 }
