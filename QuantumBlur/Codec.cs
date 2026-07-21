@@ -15,6 +15,41 @@ public static class Codec
         return Math.Clamp((int)Math.Round(h), 0, 255);
     }
 
+    /// <summary>
+    /// Encodes an image as one circuit per colour channel.
+    /// </summary>
+    public static QuantumCircuit[] ImageToCircuit(Image img, bool log = false, Grid? grid = null)
+    {
+        var height = ImageToHeight(img);
+        var circuits = new QuantumCircuit[height.Length];
+        for (int j = 0; j < height.Length; j++)
+        {
+            circuits[j] = HeightToCircuit(height[j], log: log, grid: grid);
+        }
+
+        return circuits;
+    }
+
+    /// <summary>
+    /// Renders an image from one circuit per colour channel.
+    /// Paired with ImageToCircuit().
+    /// </summary>
+    public static Image CircuitToImage(QuantumCircuit[] circuits, bool log = false, Grid? grid = null)
+    {
+        if (circuits.Length != 1 && circuits.Length != 3) // not L nor RGB mode
+            throw new ArgumentException(nameof(circuits));
+        
+        var height = new HeightMap[circuits.Length];
+        for (int j = 0; j < circuits.Length; j++)
+        {
+            var h = CircuitToHeight(circuits[j], log: log, grid: grid); // maximum 1.0
+            foreach (var pos in h.Keys) h[pos] *= 255.0; // map it to 0-255 values
+            height[j] = h;
+        }
+
+        return HeightToImage(height);
+    }
+
     public static QuantumCircuit HeightToCircuit(HeightMap height, bool log = false, double eps = 1e-2, Grid? grid = null) {
         var (lx, ly) = Helper.GetSize(height); // returns (int, int)
         grid ??= Encoding.MakeGrid(lx, ly);

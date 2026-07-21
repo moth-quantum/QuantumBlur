@@ -296,6 +296,51 @@ bool Approx(double a, double b, double tol = 1e-9) => Math.Abs(a - b) < tol;
     Check("BlurImage over budget: result restored to original size", back.Size == (32, 32));
 }
 
+// 21. ImageToCircuits: RGB -> 3 circuits of 4 qubits, L -> 1 circuit.
+{
+    var rgb = new Image(ImageType.Rgb, 4, 4);
+    var l = new Image(ImageType.L, 4, 4);
+    var cr = Codec.ImageToCircuit(rgb);
+    var cl = Codec.ImageToCircuit(l);
+    Check("ImageToCircuit: 3 RGB circuits of 4 qubits, 1 L circuit",
+        cr.Length == 3 && cr[0].Qubits == 4 && cl.Length == 1);
+}
+
+// 22. Round trip through circuits on a FULL-RANGE image is ~identity: every
+//     channel reaches 255, so the per-channel stretch restores it. (A dark image
+//     would NOT survive - that is the documented brightness loss, BlurImage's job.)
+{
+    var img = new Image(ImageType.Rgb, 8, 8);
+    for (int x = 0; x < 8; x++)
+        for (int y = 0; y < 8; y++)
+            img.SetPixel(x, y, (x * 36, y * 36, (x + y) * 18)); // each channel hits ~255
+    var back = Codec.CircuitToImage(Codec.ImageToCircuit(img));
+    int maxDiff = 0;
+    for (int x = 0; x < 8; x++)
+        for (int y = 0; y < 8; y++)
+        {
+            var a = img.GetPixel(x, y); var b = back.GetPixel(x, y);
+            maxDiff = Math.Max(maxDiff, Math.Abs(a.R - b.R));
+            maxDiff = Math.Max(maxDiff, Math.Abs(a.G - b.G));
+        }
+    Check("circuits round trip (full-range): near-identity", back.Size == (8, 8) && maxDiff <= 4);
+}
+
+// 23. CircuitsToImage rejects an unusable channel count (not 1 or 3).
+{
+    bool threw = false;
+    try
+    {
+        Codec.CircuitToImage(new[]
+        {
+            Codec.HeightToCircuit(new HeightMap { [(0, 0)] = 1 }),
+            Codec.HeightToCircuit(new HeightMap { [(0, 0)] = 1 }),
+        });
+    }
+    catch (ArgumentException) { threw = true; }
+    Check("CircuitToImage: rejects 2 circuits (not 1 or 3)", threw);
+}
+
 Console.WriteLine(failures == 0 ? "\nAll codec tests passed." : $"\n{failures} test(s) FAILED.");
 return failures == 0 ? 0 : 1;
 
