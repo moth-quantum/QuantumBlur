@@ -341,6 +341,54 @@ bool Approx(double a, double b, double tol = 1e-9) => Math.Abs(a - b) < tol;
     Check("CircuitToImage: rejects 2 circuits (not 1 or 3)", threw);
 }
 
+// 24. RGBA image <-> heights is lossless, alpha included (4 channels).
+{
+    var img = new Image(ImageType.Rgba, 4, 4);
+    for (int x = 0; x < 4; x++)
+        for (int y = 0; y < 4; y++)
+        {
+            img.SetPixel(x, y, (x * 60, y * 60, 30));
+            img.SetAlpha(x, y, (x + y) * 30);
+        }
+    var heights = Codec.ImageToHeight(img);
+    var back = Codec.HeightToImage(heights);
+    bool ok = heights.Length == 4 && back.Mode == ImageType.Rgba;
+    for (int x = 0; x < 4 && ok; x++)
+        for (int y = 0; y < 4 && ok; y++)
+            ok = back.GetPixel(x, y) == img.GetPixel(x, y) && back.GetAlpha(x, y) == img.GetAlpha(x, y);
+    Check("RGBA <-> heights: 4 channels, alpha preserved", ok);
+}
+
+// 25. Blur an RGBA sprite: opaque background stays opaque and size is preserved.
+{
+    var img = new Image(ImageType.Rgba, 8, 8);
+    for (int x = 0; x < 8; x++)
+        for (int y = 0; y < 8; y++)
+        {
+            img.SetPixel(x, y, (200, 50, 50));
+            img.SetAlpha(x, y, 255);
+        }
+    img.SetAlpha(3, 3, 0); // one transparent pixel
+    var back = Effect.BlurImage(img, 0.2);
+    Check("RGBA blur: size kept, alpha channel present & finite",
+        back.Mode == ImageType.Rgba && back.Size == (8, 8)
+        && back.GetAlpha(0, 0) > 200 && back.GetAlpha(3, 3) <= 255);
+}
+
+// 26. Large RGBA over budget: downscale->blur->upscale keeps size AND alpha.
+{
+    var img = new Image(ImageType.Rgba, 40, 40);
+    for (int x = 0; x < 40; x++)
+        for (int y = 0; y < 40; y++)
+        {
+            img.SetPixel(x, y, ((x * 6) % 256, (y * 6) % 256, 0));
+            img.SetAlpha(x, y, 255);
+        }
+    var back = Effect.BlurImage(img, 0.2, maxQubits: 8);
+    Check("RGBA over budget: size restored, still RGBA",
+        back.Size == (40, 40) && back.Mode == ImageType.Rgba);
+}
+
 Console.WriteLine(failures == 0 ? "\nAll codec tests passed." : $"\n{failures} test(s) FAILED.");
 return failures == 0 ? 0 : 1;
 

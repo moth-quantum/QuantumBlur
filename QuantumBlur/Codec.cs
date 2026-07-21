@@ -36,8 +36,8 @@ public static class Codec
     /// </summary>
     public static Image CircuitToImage(QuantumCircuit[] circuits, bool log = false, Grid? grid = null)
     {
-        if (circuits.Length != 1 && circuits.Length != 3) // not L nor RGB mode
-            throw new ArgumentException(nameof(circuits));
+        if (circuits.Length != 1 && circuits.Length != 3 && circuits.Length != 4)
+            throw new ArgumentException("Expected 1 (L), 3 (RGB), or 4 (RGBA) circuits.", nameof(circuits));
         
         var height = new HeightMap[circuits.Length];
         for (int j = 0; j < circuits.Length; j++)
@@ -151,7 +151,7 @@ public static class Codec
     public static HeightMap[] ImageToHeight(Image img)
     {
         var (lx, ly) = img.Size;
-        int channels = img.Mode == ImageType.L ? 1 : 3;
+        int channels = img.Mode switch { ImageType.L => 1, ImageType.Rgba => 4, _ => 3 };
         var height = new HeightMap[channels];
         for (int j = 0; j < channels; j++) height[j] = new HeightMap(lx * ly);
 
@@ -166,6 +166,7 @@ public static class Codec
                     height[0][(x, y)] = r;
                     height[1][(x, y)] = g;
                     height[2][(x, y)] = b;
+                    if (channels == 4) height[3][(x, y)] = img.GetAlpha(x, y);
                 }
             }
         }
@@ -180,17 +181,19 @@ public static class Codec
     /// </summary>
     public static Image HeightToImage(HeightMap[] height)
     {
-        if (height.Length != 1 && height.Length != 3) throw new ArgumentException("Expected 1 (L mode) or 3 (RGB mode) height maps. Currently:", nameof(height));
+        if (height.Length != 1 && height.Length != 3 && height.Length != 4) throw new ArgumentException("Expected 1 (L), 3 (RGB), or 4 (RGBA) height maps.", nameof(height));
 
         var (lx, ly) = Helper.GetSize(height[0]);
-        var img = new Image(height.Length == 1 ? ImageType.L : ImageType.Rgb, lx, ly);
+        var mode = height.Length switch { 1 => ImageType.L, 4 => ImageType.Rgba, _ => ImageType.Rgb };
+        var img = new Image(mode, lx, ly);
 
         for (int x = 0; x < lx; x++)
         {
             for (int y = 0; y < ly; y++)
             {
-                if (height.Length == 1) img.SetPixel(x, y, ToByte(height[0], (x, y)));
-                else img.SetPixel(x, y, (ToByte(height[0], (x, y)), ToByte(height[1], (x, y)), ToByte(height[2], (x, y))));
+                if (height.Length == 1) { img.SetPixel(x, y, ToByte(height[0], (x, y))); continue; }
+                img.SetPixel(x, y, (ToByte(height[0], (x, y)), ToByte(height[1], (x, y)), ToByte(height[2], (x, y))));
+                if (height.Length == 4) img.SetAlpha(x, y, ToByte(height[3], (x, y)));
             }
         }
         

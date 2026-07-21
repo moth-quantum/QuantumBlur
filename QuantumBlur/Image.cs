@@ -13,12 +13,14 @@ public enum ImageType // This makes the mode selection more robust, like we've d
 {
     L, // Pixel values are a single integer. 
     Rgb, // A tuple of three integers.
+    Rgba, // RGB plus an alpha (transparency) plane.
 }
 
 public sealed class Image
 {
     
     private readonly (int R, int G, int B)[] _pixels;
+    private readonly int[]? _alpha; // allocated only for RGBA; alpha kept as a separate plane
 
     public ImageType Mode;
     public int Width { get; }
@@ -33,6 +35,11 @@ public sealed class Image
         Width = width;
         Height = height;
         _pixels = new (int, int, int)[width * height]; // Fill up each pixel in the certain size of image black.
+        if (mode == ImageType.Rgba)
+        {
+            _alpha = new int[width * height];
+            Array.Fill(_alpha, 255); // opaque by default
+        }
     }
 
     public (int R, int G, int B) GetPixel(int x, int y) => _pixels[Index(x, y)];
@@ -42,6 +49,10 @@ public sealed class Image
     public void SetPixel(int x, int y, (int R, int G, int B) value) => _pixels[Index(x, y)] = value;
 
     public void SetPixel(int x, int y, int value) => _pixels[Index(x, y)] = (value, value, value); // to indicate the one value within one pixel during the L mode.
+
+    public int GetAlpha(int x, int y) => _alpha is null ? 255 : _alpha[Index(x, y)]; // non-RGBA images are fully opaque
+
+    public void SetAlpha(int x, int y, int value) { if (_alpha is not null) _alpha[Index(x, y)] = value; }
 
     // Prints all coordinates and pixel values to replace PIL's image display.
     public void Show()
@@ -85,6 +96,8 @@ public sealed class Image
                 // Define the local function to mix the pixel values altogether (2x2)
                 int Blend(int c00, int c10, int c01, int c11) => (int)Math.Round((1 - fx) * (1 - fy) * c00 + fx * (1- fy) * c10 + (1 - fx) * fy * c01 + fx * fy * c11);
                 resized.SetPixel(x, y, (Blend(p00.R, p10.R, p01.R, p11.R), Blend(p00.G, p10.G, p01.G, p11.G), Blend(p00.B, p10.B, p01.B, p11.B)));
+                if (Mode == ImageType.Rgba)
+                    resized.SetAlpha(x, y, Blend(GetAlpha(x0, y0), GetAlpha(x1, y0), GetAlpha(x0, y1), GetAlpha(x1, y1)));
 
             }
         }

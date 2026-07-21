@@ -16,7 +16,7 @@ public enum Where
 /// </summary>
 public static class Effect
 {
-    public static QuantumCircuit BlurHeight(HeightMap heightmap, double xi, Where axis = Where.RotationX, QuantumCircuit? circuit = null, bool log = false, Grid? grid = null)
+    public static QuantumCircuit BlurHeight(HeightMap heightmap, double xi = 0.5, Where axis = Where.RotationX, QuantumCircuit? circuit = null, bool log = false, Grid? grid = null)
     {
         var (lx, ly) = Helper.GetSize(heightmap);
         grid ??= Encoding.MakeGrid(lx, ly);
@@ -72,7 +72,7 @@ public static class Effect
     /// <summary>
     /// The easiest way of using Quantum Blur!
     /// </summary>
-    public static Image BlurImage(Image img, double xi, Where axis = Where.RotationX, bool log = false, int maxQubits = 20)
+    public static Image BlurImage(Image img, double xi = 0.5, Where axis = Where.RotationX, bool log = false, int maxQubits = 20)
     {
         // If the image is too big (the ones require more than 20 qubits)
         // resize the image (downscale -> process -> rescale to original)
