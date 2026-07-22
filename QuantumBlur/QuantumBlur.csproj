@@ -1,14 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;netstandard2.1</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <PackageId>Moth.QuantumBlur</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Astryd Park</Authors>
+    <Company>Moth</Company>
+
+    <!-- for NuGet gallery -->
+    <Description>Applying blur-like noise operation onto images, textures or procedural generation for C#-based game engines.</Description>
+    <PackageTags>quantumcomputing;quantumblur;micromoth;quantum;gamedevelopment;godot;unity;</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/moth-quantum/QuantumBlur/tree/csharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/moth-quantum/QuantumBlur.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryBranch>csharp</RepositoryBranch>
+    <Copyright>Copyright (c) Moth 2026</Copyright>
+    <PackageReleaseNotes>First public release. Targets .NET 8.0 (Godot) and .NET Standard 2.1. (Unity)</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Moth.MicroMoth" Version="1.1.0" />
+    <PackageReference Include="Moth.MicroMoth" Version="1.2.0" />
     <!-- <ProjectReference Include="../../MicroMoth/versions/Csharp/MicroMoth/MicroMoth.csproj" /> --> <!--This is for the local debugging purpose-->
+    <None Include="../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
