@@ -1,10 +1,13 @@
 name: Quantum Blur for C#
 
-# Publish manually from the Actions tab, or automatically when you publish a GitHub Release.
+# Publish by pushing a csharp-v* tag (e.g. `git tag csharp-v1.0.0 && git push origin csharp-v1.0.0`).
+# NOTE: build.yml lives on the csharp branch, but `main` is the default branch. GitHub resolves
+# workflow_dispatch/release triggers from the DEFAULT branch, so they can't fire this file. A tag
+# push resolves the workflow from the pushed ref's tree, which is how a non-default branch publishes.
 on:
-  workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'csharp-v*'
 
 jobs:
   build-and-publish:
